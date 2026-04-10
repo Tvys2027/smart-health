@@ -1,0 +1,84 @@
+{% extends 'base.html' %}
+{% block title %}Caretaker Mapping — SmartHealth{% endblock %}
+{% block content %}
+<div class="container-sm page-section">
+  <div class="step-bar">
+    <div class="step-item"><div class="step-dot done">✓</div><div class="step-label">Register</div></div>
+    <div class="step-line done"></div>
+    <div class="step-item"><div class="step-dot done">✓</div><div class="step-label">Medical</div></div>
+    <div class="step-line done"></div>
+    <div class="step-item"><div class="step-dot active">3</div><div class="step-label active">Caretaker</div></div>
+    <div class="step-line"></div>
+    <div class="step-item"><div class="step-dot">4</div><div class="step-label">Prescription</div></div>
+    <div class="step-line"></div>
+    <div class="step-item"><div class="step-dot">5</div><div class="step-label">Schedule</div></div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <div class="card-icon">👨‍👧</div>
+      <div>
+        <div class="card-title">Caretaker Mapping</div>
+        <div class="card-subtitle">Add your family member or nurse who will receive alerts</div>
+      </div>
+    </div>
+
+    <div class="alert-box info mb-16">
+      <div class="alert-icon">ℹ️</div>
+      <div>
+        <div class="alert-msg">Your caretaker will be notified if you miss medicines or press the emergency button.</div>
+      </div>
+    </div>
+
+    <form method="POST">
+      <div class="form-group">
+        <label class="form-label">Caretaker Full Name *</label>
+        <input type="text" name="ct_name" class="form-control" placeholder="e.g. Ramya Kumar" required>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Caretaker Mobile Number *</label>
+        <input type="tel" name="ct_mobile" class="form-control" placeholder="+91 98765 43210" required>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Create Login Password *</label>
+        <input type="password" name="ct_password" class="form-control" placeholder="Caretaker will use this to login" required>
+        <div class="form-hint">Share this password with your caretaker for their dashboard access</div>
+      </div>
+
+      <div style="background:var(--bg2);border-radius:12px;padding:16px;margin-bottom:20px">
+        <div style="font-weight:800;margin-bottom:8px;color:var(--primary)">📱 Caretaker will receive alerts when:</div>
+        <div style="font-size:0.875rem;color:var(--text-muted);display:flex;flex-direction:column;gap:6px">
+          <span>🔴 You miss a medicine after 2 reminders</span>
+          <span>⚠️ Your tablet count drops to 2 or less</span>
+          <span>🚨 You press the Emergency button</span>
+        </div>
+      </div>
+
+      <button type="submit" class="btn btn-primary btn-block btn-lg">Next: Upload Prescription →</button>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function(){
+  const VOICE_ENABLED = {{ 'true' if session.get('voice_enabled') else 'false' }};
+  if (!VOICE_ENABLED) return;
+  const synth = window.speechSynthesis;
+  function speak(t){ synth.cancel(); const u=new SpeechSynthesisUtterance(t); u.lang='en-IN'; u.rate=0.88; synth.speak(u); }
+  window.addEventListener('load', () => setTimeout(() =>
+    speak('Step 3. Caretaker Setup. Please enter the name, mobile number and a password for your caretaker. They will receive alerts if you miss your medicine. Press Next when done.'), 800));
+  const hints = {
+    'ct_name':     'Enter the caretaker full name.',
+    'ct_mobile':   'Enter the caretaker mobile number with country code.',
+    'ct_password': 'Create a password for the caretaker login.'
+  };
+  Object.entries(hints).forEach(([n,h]) => {
+    const el = document.querySelector(`[name="${n}"]`);
+    if (el) el.addEventListener('focus', () => speak(h));
+  });
+  document.querySelector('form').addEventListener('submit', () => speak('Caretaker saved. Moving to prescription upload.'));
+})();
+</script>
+{% endblock %}

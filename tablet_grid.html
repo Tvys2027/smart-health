@@ -1,0 +1,102 @@
+{% extends 'base.html' %}
+{% block title %}Tablet Grid — {{ medicine.name }}{% endblock %}
+{% block content %}
+<div class="container page-section">
+  <div style="display:flex;align-items:center;gap:12px;margin-bottom:28px">
+    <a href="{{ url_for('user_dashboard') }}" class="btn btn-outline btn-sm">← Back</a>
+    <div>
+      <h2 style="font-family:'Playfair Display',serif;font-size:1.6rem;font-weight:700">{{ medicine.name }} — 30 Day Grid</h2>
+      <div style="color:var(--text-muted);font-size:0.9rem">{{ medicine.dosage or '' }} | {{ medicine.tablets_remaining }} tablets remaining</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <!-- Legend -->
+    <div style="display:flex;gap:16px;margin-bottom:20px;flex-wrap:wrap">
+      <div style="display:flex;align-items:center;gap:8px">
+        <div style="width:28px;height:28px;background:#e53e3e;border-radius:6px"></div>
+        <span style="font-size:0.9rem;font-weight:700;color:#e53e3e">Missed ❌</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <div style="width:28px;height:28px;background:#38a169;border-radius:6px"></div>
+        <span style="font-size:0.9rem;font-weight:700;color:#38a169">Taken ✅</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <div style="width:28px;height:28px;background:#90cdf4;border-radius:6px"></div>
+        <span style="font-size:0.9rem;font-weight:700;color:#2b6cb0">Today 💊</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <div style="width:28px;height:28px;background:white;border:2px solid var(--border);border-radius:6px"></div>
+        <span style="font-size:0.9rem;font-weight:700;color:var(--text-muted)">Upcoming</span>
+      </div>
+    </div>
+
+    <div class="tablet-grid">
+      {% for grid in grids %}
+        {% if grid.taken %}
+          {# Green — tablet taken (on time or late, same green) #}
+          <div class="tablet-box taken-late"
+               title="Day {{ grid.day_number }} — {{ grid.scheduled_date.strftime('%d %b') if grid.scheduled_date else '' }} — Taken ✅">
+            {{ grid.day_number }}
+          </div>
+        {% elif grid.missed %}
+          {# Red — missed #}
+          <div class="tablet-box missed"
+               title="Day {{ grid.day_number }} — {{ grid.scheduled_date.strftime('%d %b') if grid.scheduled_date else '' }} — Missed ❌">
+            {{ grid.day_number }}
+          </div>
+        {% elif grid.scheduled_date == today %}
+          {# Light Blue — today, not yet taken #}
+          <div class="tablet-box today-pending"
+               title="Day {{ grid.day_number }} — Today — Take your tablet 💊">
+            {{ grid.day_number }}
+          </div>
+        {% else %}
+          {# White — future #}
+          <div class="tablet-box"
+               title="Day {{ grid.day_number }} — {{ grid.scheduled_date.strftime('%d %b') if grid.scheduled_date else '' }}">
+            {{ grid.day_number }}
+          </div>
+        {% endif %}
+      {% endfor %}
+    </div>
+
+    <!-- Stats -->
+    <div style="margin-top:20px;padding:16px;background:var(--bg2);border-radius:12px;display:flex;gap:24px;flex-wrap:wrap">
+      <div>
+        <div style="font-size:0.75rem;color:var(--text-muted);font-weight:700">TOTAL</div>
+        <div style="font-size:1.4rem;font-weight:900;color:var(--primary)">{{ medicine.total_tablets }}</div>
+      </div>
+      <div>
+        <div style="font-size:0.75rem;color:var(--text-muted);font-weight:700">TAKEN</div>
+        <div style="font-size:1.4rem;font-weight:900;color:#38a169">{{ grids|selectattr('taken')|list|length }}</div>
+      </div>
+      <div>
+        <div style="font-size:0.75rem;color:var(--text-muted);font-weight:700">MISSED</div>
+        <div style="font-size:1.4rem;font-weight:900;color:#e53e3e">{{ grids|selectattr('missed')|list|length }}</div>
+      </div>
+      <div>
+        <div style="font-size:0.75rem;color:var(--text-muted);font-weight:700">REMAINING</div>
+        <div style="font-size:1.4rem;font-weight:900;color:{{ 'var(--red)' if medicine.tablets_remaining <= 2 else 'var(--orange)' if medicine.tablets_remaining <= 5 else 'var(--text)' }}">{{ medicine.tablets_remaining }}</div>
+      </div>
+      <div>
+        <div style="font-size:0.75rem;color:var(--text-muted);font-weight:700">FOOD</div>
+        <div style="font-size:1rem;font-weight:700">{{ medicine.food_condition|capitalize }}</div>
+      </div>
+    </div>
+
+    {% if medicine.tablets_remaining <= 2 %}
+    <div class="alert-box error mt-16">
+      <div class="alert-icon">⚠️</div>
+      <div class="alert-msg">Only {{ medicine.tablets_remaining }} tablet(s) left for {{ medicine.name }}. Please consult your doctor for a refill!</div>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const today = new Date().toDateString();
+</script>
+{% endblock %}

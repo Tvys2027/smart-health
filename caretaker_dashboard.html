@@ -1,0 +1,128 @@
+{% extends 'base.html' %}
+{% block title %}Caretaker Dashboard — SmartHealth{% endblock %}
+{% block content %}
+<div class="dash-layout">
+  <div class="sidebar">
+    <div class="sidebar-header">
+      <div style="font-size:1.1rem;font-weight:900">👨‍⚕️ {{ caretaker.name }}</div>
+      <div style="font-size:0.8rem;opacity:0.8;margin-top:4px">Caretaker</div>
+    </div>
+    <nav class="sidebar-nav">
+      <a href="#patient" class="sidebar-link active"><span class="sidebar-icon">👤</span> Patient Info</a>
+      <a href="#medicines" class="sidebar-link"><span class="sidebar-icon">💊</span> Medicines</a>
+      <a href="#alerts" class="sidebar-link"><span class="sidebar-icon">🔔</span> Alerts</a>
+      <a href="{{ url_for('caretaker_logout') }}" class="sidebar-link" style="color:var(--red)"><span class="sidebar-icon">🚪</span> Logout</a>
+    </nav>
+  </div>
+
+  <main class="dash-main">
+    <div class="dash-title">Caretaker Dashboard</div>
+    <div class="dash-subtitle">Monitoring: <strong>{{ user.name }}</strong></div>
+
+    <!-- PATIENT INFO -->
+    <div id="patient" class="card mb-24">
+      <div class="card-header">
+        <div class="card-icon">👤</div>
+        <div class="card-title">Patient Information</div>
+      </div>
+      <div class="grid-2" style="gap:16px">
+        <div>
+          <div style="font-size:0.75rem;color:var(--text-muted);font-weight:700">NAME</div>
+          <div style="font-weight:800;font-size:1.1rem">{{ user.name }}</div>
+        </div>
+        <div>
+          <div style="font-size:0.75rem;color:var(--text-muted);font-weight:700">AGE</div>
+          <div style="font-weight:800;font-size:1.1rem">{{ user.age }} years</div>
+        </div>
+        <div>
+          <div style="font-size:0.75rem;color:var(--text-muted);font-weight:700">PHONE</div>
+          <div style="font-weight:700"><a href="tel:{{ user.phone }}" style="color:var(--primary)">{{ user.phone }}</a></div>
+        </div>
+        <div>
+          <div style="font-size:0.75rem;color:var(--text-muted);font-weight:700">CONDITIONS</div>
+          <div style="font-weight:700">{{ user.diseases or 'None specified' }}</div>
+        </div>
+      </div>
+      <div style="margin-top:16px;display:flex;gap:12px">
+        <a href="tel:{{ user.phone }}" class="btn btn-primary btn-sm">📞 Call Patient</a>
+        {% if user.alt_phone %}
+        <a href="tel:{{ user.alt_phone }}" class="btn btn-outline btn-sm">📞 Alternate: {{ user.alt_phone }}</a>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- STATS -->
+    <div class="grid-4 mb-24">
+      <div class="stat-card">
+        <div class="stat-number">{{ medicines|length }}</div>
+        <div class="stat-label">Total Medicines</div>
+      </div>
+      <div class="stat-card" style="border-color:var(--green)">
+        <div class="stat-number text-green">{{ today_grids.values()|selectattr('taken')|list|length }}</div>
+        <div class="stat-label">Taken Today</div>
+      </div>
+      <div class="stat-card" style="border-color:var(--red)">
+        <div class="stat-number text-red">{{ alerts|selectattr('alert_type','equalto','missed')|list|length }}</div>
+        <div class="stat-label">Missed Alerts</div>
+      </div>
+      <div class="stat-card" style="border-color:var(--orange)">
+        <div class="stat-number" style="color:var(--orange)">{% set low_count = namespace(v=0) %}{% for m in medicines %}{% if m.tablets_remaining <= 5 %}{% set low_count.v = low_count.v + 1 %}{% endif %}{% endfor %}{{ low_count.v }}</div>
+        <div class="stat-label">Low Stock</div>
+      </div>
+    </div>
+
+    <!-- MEDICINE STATUS -->
+    <div id="medicines" class="mb-24">
+      <h3 style="font-family:'Playfair Display',serif;font-size:1.4rem;font-weight:700;margin-bottom:16px">💊 Today's Medicine Status</h3>
+      {% for med in medicines %}
+      <div class="card mb-12" style="padding:18px">
+        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px">
+          <div>
+            <div style="font-weight:800;font-size:1rem">{{ med.name }}</div>
+            <div style="font-size:0.85rem;color:var(--text-muted)">{{ med.dosage or '' }}</div>
+            <div class="med-tags mt-8">
+              {% for t in med.get_times() %}
+                {% set h = t.split(':')[0]|int %}
+                {% set ms = t.split(':')[1] %}
+                {% set ap = 'AM' if h < 12 else 'PM' %}
+                {% set hr = 12 if h % 12 == 0 else h % 12 %}
+                <span class="tag" style="background:var(--bg2);color:var(--primary)">⏰ {{ hr }}:{{ ms }} {{ ap }}</span>
+              {% endfor %}
+            </div>
+          </div>
+          <div style="text-align:right">
+            {% set grid = today_grids.get(med.id) %}
+            {% if grid and grid.taken %}
+              <span class="badge badge-green">✅ Taken</span>
+              <div style="font-size:0.75rem;color:var(--text-muted);margin-top:4px">{{ grid.taken_at.strftime('%I:%M %p') if grid.taken_at }}</div>
+            {% else %}
+              <span class="badge badge-red">⏳ Not yet taken</span>
+            {% endif %}
+            <div style="margin-top:6px;font-size:0.8rem;color:{{ 'var(--red)' if med.tablets_remaining <= 2 else 'var(--text-muted)' }}">
+              {{ med.tablets_remaining }} tablets left
+            </div>
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+
+    <!-- ALERTS -->
+    <div id="alerts">
+      <h3 style="font-family:'Playfair Display',serif;font-size:1.4rem;font-weight:700;margin-bottom:16px">🔔 Alert History</h3>
+      {% for alert in alerts %}
+      <div class="alert-box {{ 'error' if alert.alert_type == 'emergency' else 'warning' if alert.alert_type == 'missed' else 'info' }} mb-8">
+        <div class="alert-icon">{{ '🚨' if alert.alert_type == 'emergency' else '⚠️' if alert.alert_type == 'missed' else '💊' }}</div>
+        <div style="flex:1">
+          <div class="alert-msg">{{ alert.message }}</div>
+          <div class="alert-time">{{ alert.created_at.strftime('%d %b %Y, %I:%M %p') }}</div>
+        </div>
+        <span class="badge badge-{{ 'red' if alert.alert_type == 'emergency' else 'orange' }}">{{ alert.alert_type|upper }}</span>
+      </div>
+      {% else %}
+        <div class="card text-center" style="padding:24px;color:var(--text-muted)">No alerts recorded</div>
+      {% endfor %}
+    </div>
+  </main>
+</div>
+{% endblock %}

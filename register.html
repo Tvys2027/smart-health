@@ -1,0 +1,190 @@
+{% extends 'base.html' %}
+{% block title %}Register — SmartHealth{% endblock %}
+
+{% block content %}
+<div class="container-sm page-section">
+  <!-- STEP BAR -->
+  <div class="step-bar">
+    <div class="step-item">
+      <div class="step-dot active">1</div>
+      <div class="step-label active">Register</div>
+    </div>
+    <div class="step-line"></div>
+    <div class="step-item">
+      <div class="step-dot">2</div>
+      <div class="step-label">Medical</div>
+    </div>
+    <div class="step-line"></div>
+    <div class="step-item">
+      <div class="step-dot">3</div>
+      <div class="step-label">Caretaker</div>
+    </div>
+    <div class="step-line"></div>
+    <div class="step-item">
+      <div class="step-dot">4</div>
+      <div class="step-label">Prescription</div>
+    </div>
+    <div class="step-line"></div>
+    <div class="step-item">
+      <div class="step-dot">5</div>
+      <div class="step-label">Schedule</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <div class="card-icon">👤</div>
+      <div>
+        <div class="card-title">Patient Registration</div>
+        <div class="card-subtitle">Tell us about yourself to get started</div>
+      </div>
+    </div>
+
+    <form method="POST" action="{{ url_for('register') }}">
+      <div class="grid-2">
+        <div class="form-group">
+          <label class="form-label">Full Name *</label>
+          <input type="text" name="name" class="form-control" placeholder="Enter your full name" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Age *</label>
+          <input type="number" name="age" id="ageField" class="form-control" placeholder="Your age" min="1" max="120" required>
+          <div class="form-hint" id="ageHint">📱 Standard text interface will be used</div>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Date of Birth</label>
+        <input type="date" name="dob" class="form-control">
+      </div>
+
+      <div class="grid-2">
+        <div class="form-group">
+          <label class="form-label">Phone Number *</label>
+          <input type="tel" name="phone" class="form-control" placeholder="+91 98765 43210" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Alternate Phone</label>
+          <input type="tel" name="alt_phone" class="form-control" placeholder="Optional">
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Email Address</label>
+        <input type="email" name="email" class="form-control" placeholder="your@email.com">
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Preferred Language</label>
+        <select name="language" class="form-control form-select">
+          <option value="en">🇬🇧 English</option>
+          <option value="ta">🇮🇳 Tamil (தமிழ்)</option>
+        </select>
+        <div class="form-hint">Voice reminders will be spoken in your selected language</div>
+      </div>
+
+      <!-- VOICE BADGE -->
+      <div id="voiceBanner" class="hidden" style="background:linear-gradient(135deg,#667eea,#764ba2);color:white;border-radius:12px;padding:16px;margin-bottom:20px;display:flex;align-items:center;gap:14px">
+        <div style="font-size:2rem">🔊</div>
+        <div>
+          <div style="font-weight:800;font-size:1rem">Voice Assistance Enabled!</div>
+          <div style="opacity:0.85;font-size:0.85rem">Since you are 45 or above, voice guidance has started! I will speak on every page to help you.</div>
+        </div>
+      </div>
+
+      <button type="submit" class="btn btn-primary btn-block btn-lg">
+        Next: Medical Details →
+      </button>
+    </form>
+  </div>
+
+  <div class="text-center mt-16">
+    <p class="text-muted">Already registered? <a href="{{ url_for('user_login') }}" style="color:var(--primary);font-weight:700">Login here</a></p>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// ── Voice guidance for registration ──────────────────────────────────────────
+const RegVoice = {
+  synth: window.speechSynthesis,
+  enabled: false,
+  lang: 'en-IN',
+
+  speak(text) {
+    if (!this.enabled || !this.synth) return;
+    this.synth.cancel();
+    const u = new SpeechSynthesisUtterance(text);
+    u.lang = this.lang;
+    u.rate = 0.88;
+    u.pitch = 1.0;
+    u.volume = 1.0;
+    this.synth.speak(u);
+  },
+
+  enable() {
+    if (this.enabled) return;   // already started — don't repeat
+    this.enabled = true;
+    const langSel = document.querySelector('select[name="language"]');
+    if (langSel && langSel.value === 'ta') this.lang = 'ta-IN';
+    this.speak(
+      'Hello! Voice assistance is now active. I will guide you through every step. ' +
+      'Please fill in your full name, then your date of birth, phone number and email. ' +
+      'When you are ready, press the Next button to continue.'
+    );
+  },
+
+  disable() {
+    this.enabled = false;
+    this.synth.cancel();
+  }
+};
+
+// Watch age field
+document.getElementById('ageField').addEventListener('input', function () {
+  const age = parseInt(this.value);
+  const banner = document.getElementById('voiceBanner');
+
+  if (age >= 45) {
+    banner.style.display = 'flex';
+    banner.classList.remove('hidden');
+    RegVoice.enable();
+  } else {
+    banner.style.display = 'none';
+    RegVoice.disable();
+  }
+  onAgeChange(age);
+});
+
+// Speak a helpful hint when each field gets focus
+const fieldHints = {
+  'name':      'Please enter your full name.',
+  'dob':       'Please enter your date of birth.',
+  'phone':     'Enter your mobile number with country code, for example plus 91 followed by 10 digits.',
+  'alt_phone': 'You can enter an alternate phone number, or leave it blank.',
+  'email':     'Enter your email address, or leave it blank.',
+  'language':  'Choose your preferred language for voice reminders.'
+};
+
+Object.entries(fieldHints).forEach(([name, hint]) => {
+  const el = document.querySelector(`[name="${name}"]`);
+  if (el) el.addEventListener('focus', () => RegVoice.speak(hint));
+});
+
+// Speak when language changes
+const langSel = document.querySelector('select[name="language"]');
+if (langSel) {
+  langSel.addEventListener('change', function () {
+    RegVoice.lang = this.value === 'ta' ? 'ta-IN' : 'en-IN';
+    if (RegVoice.enabled) RegVoice.speak('Language changed. I will now speak in your selected language.');
+  });
+}
+
+// Speak before form submits
+document.querySelector('form').addEventListener('submit', function () {
+  if (RegVoice.enabled)
+    RegVoice.speak('Registration submitted. Please wait while we move to the next step.');
+});
+</script>
+{% endblock %}

@@ -1,0 +1,232 @@
+{% extends 'base.html' %}
+{% block title %}Admin Dashboard — SmartHealth{% endblock %}
+{% block content %}
+<div class="dash-layout">
+  <div class="sidebar">
+    <div class="sidebar-header">
+      <div style="font-size:1.1rem;font-weight:900">🔑 Admin Panel</div>
+      <div style="font-size:0.8rem;opacity:0.8;margin-top:4px">Developer Access</div>
+    </div>
+    <nav class="sidebar-nav">
+      <a href="#overview" class="sidebar-link active"><span class="sidebar-icon">📊</span> Overview</a>
+      <a href="#users" class="sidebar-link"><span class="sidebar-icon">👥</span> Users</a>
+      <a href="#caretakers" class="sidebar-link"><span class="sidebar-icon">👨‍⚕️</span> Caretakers</a>
+      <a href="#alerts" class="sidebar-link"><span class="sidebar-icon">🔔</span> All Alerts</a>
+      <a href="#doctors" class="sidebar-link"><span class="sidebar-icon">🩺</span> Doctors</a>
+      <a href="{{ url_for('admin_logout') }}" class="sidebar-link" style="color:var(--red)"><span class="sidebar-icon">🚪</span> Logout</a>
+    </nav>
+  </div>
+
+  <main class="dash-main">
+    <div class="dash-title">Admin Dashboard</div>
+    <div class="dash-subtitle">System overview and management</div>
+
+    <!-- STATS -->
+    <div id="overview" class="grid-4 mb-24">
+      <div class="stat-card">
+        <div class="stat-number">{{ users|length }}</div>
+        <div class="stat-label">Total Users</div>
+      </div>
+      <div class="stat-card" style="border-color:var(--accent)">
+        <div class="stat-number" style="color:var(--accent)">{{ caretakers|length }}</div>
+        <div class="stat-label">Caretakers</div>
+      </div>
+      <div class="stat-card" style="border-color:var(--orange)">
+        <div class="stat-number" style="color:var(--orange)">{{ total_medicines }}</div>
+        <div class="stat-label">Total Medicines</div>
+      </div>
+      <div class="stat-card" style="border-color:var(--red)">
+        <div class="stat-number text-red">{{ missed_alerts }}</div>
+        <div class="stat-label">Missed Alerts</div>
+      </div>
+      <div class="stat-card" style="border-color:#38b2ac">
+        <div class="stat-number" style="color:#38b2ac">{{ doctors|length }}</div>
+        <div class="stat-label">Doctors</div>
+      </div>
+    </div>
+
+    <!-- USERS TABLE -->
+    <div id="users" class="card mb-24">
+      <div class="card-header">
+        <div class="card-icon">👥</div>
+        <div class="card-title">All Users ({{ users|length }})</div>
+      </div>
+      <div style="overflow-x:auto">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Name</th><th>Age</th><th>Phone</th><th>Diseases</th><th>Voice</th><th>Registered</th><th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for u in users %}
+            <tr>
+              <td><strong>{{ u.name }}</strong></td>
+              <td>{{ u.age }}</td>
+              <td>{{ u.phone }}</td>
+              <td style="font-size:0.8rem">{{ u.diseases or '—' }}</td>
+              <td>{% if u.voice_enabled %}<span class="badge badge-blue">🔊 ON</span>{% else %}<span class="badge" style="background:#f7fafc;color:#718096">OFF</span>{% endif %}</td>
+              <td style="font-size:0.8rem">{{ u.created_at.strftime('%d %b %Y') }}</td>
+              <td style="display:flex;gap:6px;align-items:center;">
+                <a href="{{ url_for('admin_user_detail', user_id=u.id) }}" class="btn btn-sm btn-outline">View</a>
+                <form method="POST" action="{{ url_for('admin_delete_user', user_id=u.id) }}" onsubmit="return confirm('Are you sure you want to delete {{ u.name }}? This will remove all their medicines, alerts and data permanently.')">
+                  <button type="submit" class="btn btn-sm" style="background:#e53e3e;color:#fff;border:none;cursor:pointer;">Delete</button>
+                </form>
+              </td>
+            </tr>
+            {% else %}
+            <tr><td colspan="7" style="text-align:center;color:var(--text-muted)">No users registered</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- CARETAKERS TABLE -->
+    <div id="caretakers" class="card mb-24">
+      <div class="card-header">
+        <div class="card-icon">👨‍⚕️</div>
+        <div class="card-title">Caretaker Mapping ({{ caretakers|length }})</div>
+      </div>
+      <div style="overflow-x:auto">
+        <table class="data-table">
+          <thead>
+            <tr><th>Caretaker</th><th>Mobile</th><th>Patient</th><th>Mapped On</th></tr>
+          </thead>
+          <tbody>
+            {% for ct in caretakers %}
+            <tr>
+              <td><strong>{{ ct.name }}</strong></td>
+              <td>{{ ct.mobile }}</td>
+              <td>{{ ct.user.name }}</td>
+              <td style="font-size:0.8rem">{{ ct.created_at.strftime('%d %b %Y') }}</td>
+            </tr>
+            {% else %}
+            <tr><td colspan="4" style="text-align:center;color:var(--text-muted)">No caretakers</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- DOCTORS TABLE -->
+    <div id="doctors" class="card mb-24">
+      <div class="card-header">
+        <div class="card-icon">🩺</div>
+        <div class="card-title">Doctors ({{ doctors|length }})</div>
+      </div>
+
+      <!-- Add Doctor Form -->
+      <div style="padding:16px;border-bottom:1px solid var(--border)">
+        <div style="font-weight:700;margin-bottom:12px;font-size:0.95rem">➕ Add New Doctor</div>
+        <form method="POST" action="{{ url_for('admin_add_doctor') }}" style="display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end">
+          <div>
+            <label style="font-size:0.8rem;color:var(--text-muted);display:block;margin-bottom:4px">Name *</label>
+            <input type="text" name="name" required placeholder="Dr. Name" class="form-control" style="width:160px">
+          </div>
+          <div>
+            <label style="font-size:0.8rem;color:var(--text-muted);display:block;margin-bottom:4px">Phone *</label>
+            <input type="text" name="phone" required placeholder="+91XXXXXXXXXX" class="form-control" style="width:150px">
+          </div>
+          <div>
+            <label style="font-size:0.8rem;color:var(--text-muted);display:block;margin-bottom:4px">Specialist</label>
+            <input type="text" name="specialist" placeholder="General Physician" class="form-control" style="width:160px">
+          </div>
+          <div>
+            <label style="font-size:0.8rem;color:var(--text-muted);display:block;margin-bottom:4px">Qualification</label>
+            <input type="text" name="qualification" placeholder="MBBS" class="form-control" style="width:120px">
+          </div>
+          <div>
+            <label style="font-size:0.8rem;color:var(--text-muted);display:block;margin-bottom:4px">Assign to Patient</label>
+            <select name="user_id" class="form-control" style="width:160px">
+              <option value="">— None —</option>
+              {% for u in users %}
+              <option value="{{ u.id }}">{{ u.name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <button type="submit" class="btn btn-primary" style="height:38px">Add Doctor</button>
+        </form>
+      </div>
+
+      <!-- Doctors List -->
+      <div style="overflow-x:auto">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Name</th><th>Phone</th><th>Specialist</th><th>Qualification</th><th>Assigned Patient</th><th>Avg Rating</th><th>Assign</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for doc in doctors %}
+            <tr>
+              <td><strong>{{ doc.name }}</strong></td>
+              <td>{{ doc.phone }}</td>
+              <td><span class="badge badge-blue">{{ doc.specialist }}</span></td>
+              <td style="font-size:0.8rem">{{ doc.qualification }}</td>
+              <td>
+                {% if doc.assigned_user_id %}
+                  {% for u in users %}{% if u.id == doc.assigned_user_id %}<span class="badge badge-green">{{ u.name }}</span>{% endif %}{% endfor %}
+                {% else %}
+                  <span style="color:var(--text-muted);font-size:0.85rem">Not assigned</span>
+                {% endif %}
+              </td>
+              <td>
+                {% set doc_reviews = [] %}
+                <span style="color:#f6ad55;font-weight:700">★ —</span>
+              </td>
+              <td>
+                <form method="POST" action="{{ url_for('admin_assign_doctor', doc_id=doc.id) }}" style="display:flex;gap:6px;align-items:center">
+                  <select name="user_id" class="form-control" style="width:130px;font-size:0.8rem">
+                    <option value="">— None —</option>
+                    {% for u in users %}
+                    <option value="{{ u.id }}" {% if u.id == doc.assigned_user_id %}selected{% endif %}>{{ u.name }}</option>
+                    {% endfor %}
+                  </select>
+                  <button type="submit" class="btn btn-sm btn-outline">Save</button>
+                </form>
+              </td>
+            </tr>
+            {% else %}
+            <tr><td colspan="7" style="text-align:center;color:var(--text-muted)">No doctors added yet. Use the form above to add one.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ALERTS TABLE -->
+    <div id="alerts" class="card">
+      <div class="card-header">
+        <div class="card-icon">🔔</div>
+        <div class="card-title">Recent Alerts ({{ total_alerts }})</div>
+      </div>
+      <div style="overflow-x:auto">
+        <table class="data-table">
+          <thead>
+            <tr><th>User</th><th>Type</th><th>Medicine</th><th>Message</th><th>Caretaker Notified</th><th>Time</th></tr>
+          </thead>
+          <tbody>
+            {% for a in alerts %}
+            <tr>
+              <td><strong>{{ a.user.name }}</strong></td>
+              <td>
+                <span class="badge {{ 'badge-red' if a.alert_type=='emergency' else 'badge-orange' if a.alert_type=='missed' else 'badge-blue' }}">
+                  {{ a.alert_type|upper }}
+                </span>
+              </td>
+              <td>{{ a.medicine_name or '—' }}</td>
+              <td style="font-size:0.8rem;max-width:200px">{{ a.message }}</td>
+              <td>{% if a.caretaker_notified %}<span class="badge badge-green">Yes</span>{% else %}<span class="badge">No</span>{% endif %}</td>
+              <td style="font-size:0.8rem">{{ a.created_at.strftime('%d %b %Y %H:%M') }}</td>
+            </tr>
+            {% else %}
+            <tr><td colspan="6" style="text-align:center;color:var(--text-muted)">No alerts</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+</div>
+{% endblock %}

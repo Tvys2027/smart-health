@@ -1,0 +1,124 @@
+{% extends 'base.html' %}
+{% block title %}Upload Prescription — SmartHealth{% endblock %}
+{% block content %}
+<div class="container-sm page-section">
+  <div class="step-bar">
+    <div class="step-item"><div class="step-dot done">✓</div><div class="step-label">Register</div></div>
+    <div class="step-line done"></div>
+    <div class="step-item"><div class="step-dot done">✓</div><div class="step-label">Medical</div></div>
+    <div class="step-line done"></div>
+    <div class="step-item"><div class="step-dot done">✓</div><div class="step-label">Caretaker</div></div>
+    <div class="step-line done"></div>
+    <div class="step-item"><div class="step-dot active">4</div><div class="step-label active">Prescription</div></div>
+    <div class="step-line"></div>
+    <div class="step-item"><div class="step-dot">5</div><div class="step-label">Schedule</div></div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <div class="card-icon">📷</div>
+      <div>
+        <div class="card-title">Upload Prescription</div>
+        <div class="card-subtitle">Our AI will automatically extract your medicines</div>
+      </div>
+    </div>
+
+    {% if not extracted_medicines %}
+    {# ── Upload form — shown before OCR ── #}
+    <form method="POST" enctype="multipart/form-data" id="uploadForm">
+      <div class="upload-zone" id="uploadZone">
+        <input type="file" name="prescription" id="prescriptionFile" accept=".jpg,.jpeg,.png,.gif,.pdf" style="display:none">
+        <div class="upload-icon">📄</div>
+        <div class="upload-text">Click to upload or drag & drop your prescription</div>
+        <div class="upload-sub">Supports: JPG, PNG, PDF (max 16MB)</div>
+        <div id="uploadFileName" style="display:none;margin-top:12px;font-weight:700;color:var(--primary)"></div>
+      </div>
+
+      <div style="text-align:center;margin:20px 0;color:var(--text-muted);font-size:0.9rem">
+        <span>— or —</span>
+      </div>
+
+      <a href="{{ url_for('medicine_form') }}" class="btn btn-outline btn-block mb-16">
+        ✍️ Enter Medicines Manually (Skip OCR)
+      </a>
+
+      <div id="uploadBtn" style="display:none">
+        <button type="submit" class="btn btn-primary btn-block btn-lg" id="submitOCR">
+          🔍 Scan Prescription with OCR
+        </button>
+      </div>
+    </form>
+    {% endif %}
+
+    {% if extracted_medicines %}
+    {# ── OCR Results — shown after scan ── #}
+    <div class="alert-box success mb-20" style="margin-top:8px">
+      <div class="alert-icon">✅</div>
+      <div>
+        <div class="alert-msg" style="font-weight:800">OCR Scan Complete! Found {{ extracted_medicines|length }} medicine(s).</div>
+        <div style="font-size:0.88rem;color:var(--text-muted);margin-top:4px">
+          These medicines have been <strong>automatically saved</strong> to your profile. You can go directly to your dashboard or set reminder times via Edit Schedule.
+        </div>
+      </div>
+    </div>
+
+    <h3 style="font-weight:800;margin-bottom:12px">📋 Extracted Medicines:</h3>
+    <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:24px">
+      {% for med in extracted_medicines %}
+      <div style="display:flex;align-items:center;gap:12px;padding:12px 16px;background:var(--bg2);border-radius:10px;border-left:3px solid var(--accent)">
+        <span style="font-size:1.2rem">💊</span>
+        <div style="flex:1">
+          <div style="font-weight:700">{{ med }}</div>
+          <div style="font-size:0.8rem;color:var(--text-muted)">Dosage &amp; time — set via Edit Schedule</div>
+        </div>
+        <span class="badge badge-green">Saved ✓</span>
+      </div>
+      {% endfor %}
+    </div>
+
+    {% if raw_text %}
+    <details style="margin-bottom:20px">
+      <summary style="cursor:pointer;font-weight:700;color:var(--text-muted);font-size:0.9rem">📝 View Raw OCR Text</summary>
+      <pre style="background:var(--bg);padding:16px;border-radius:10px;font-size:0.8rem;overflow-x:auto;margin-top:10px;white-space:pre-wrap">{{ raw_text }}</pre>
+    </details>
+    {% endif %}
+
+    <div style="display:flex;flex-direction:column;gap:12px">
+      <a href="{{ url_for('user_dashboard') }}" class="btn btn-primary btn-block btn-lg">
+        🏠 Go to Dashboard →
+      </a>
+      <a href="{{ url_for('medicine_form') }}" class="btn btn-outline btn-block">
+        ✏️ Edit Schedule (set dosage &amp; reminder times)
+      </a>
+      <a href="{{ url_for('prescription_upload') }}" class="btn btn-outline btn-block">
+        📷 Upload Another Prescription
+      </a>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.getElementById('prescriptionFile') && document.getElementById('prescriptionFile').addEventListener('change', function() {
+  if (this.files[0]) {
+    document.getElementById('uploadBtn').style.display = 'block';
+    document.getElementById('submitOCR').textContent = '🔍 Scan: ' + this.files[0].name;
+    var fn = document.getElementById('uploadFileName');
+    fn.textContent = '📎 ' + this.files[0].name;
+    fn.style.display = 'block';
+  }
+});
+
+// Voice guidance
+(function(){
+  const VOICE_ENABLED = {{ 'true' if session.get('voice_enabled') else 'false' }};
+  if (!VOICE_ENABLED) return;
+  const synth = window.speechSynthesis;
+  function speak(t){ synth.cancel(); const u=new SpeechSynthesisUtterance(t); u.lang='en-IN'; u.rate=0.88; synth.speak(u); }
+  window.addEventListener('load', () => setTimeout(() =>
+    speak('Step 4. Prescription Upload. You can take a photo of your prescription and upload it here. I will automatically read the medicine names. Or you can skip this step and add medicines manually on the next page.'), 800));
+})();
+</script>
+{% endblock %}

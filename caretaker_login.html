@@ -1,0 +1,25 @@
+{% extends 'base.html' %}
+{% block title %}Caretaker Login — SmartHealth{% endblock %}
+{% block content %}
+<div class="container-sm page-section" style="max-width:480px">
+  <div class="card">
+    <div style="text-align:center;margin-bottom:28px">
+      <div style="font-size:3rem;margin-bottom:12px">👨‍⚕️</div>
+      <h2 style="font-family:'Playfair Display',serif;font-size:1.8rem;font-weight:700">Caretaker Login</h2>
+      <p style="color:var(--text-muted)">Use the credentials set up by your patient</p>
+    </div>
+
+    <form method="POST">
+      <div class="form-group">
+        <label class="form-label">Your Name</label>
+        <input type="text" name="name" class="form-control" placeholder="Enter your name" required>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Password</label>
+        <input type="password" name="password" class="form-control" placeholder="Enter your password" required>
+      </div>
+      <button type="submit" class="btn btn-accent btn-block btn-lg">Access Dashboard →</button>
+    </form>
+  </div>
+</div>
+{% endblock %}

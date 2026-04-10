@@ -1,0 +1,395 @@
+{% extends 'base.html' %}
+{% block title %}Medicine Schedule — SmartHealth{% endblock %}
+{% block content %}
+<div class="container page-section">
+
+  <div class="step-bar">
+    <div class="step-item"><div class="step-dot done">✓</div><div class="step-label">Register</div></div>
+    <div class="step-line done"></div>
+    <div class="step-item"><div class="step-dot done">✓</div><div class="step-label">Medical</div></div>
+    <div class="step-line done"></div>
+    <div class="step-item"><div class="step-dot done">✓</div><div class="step-label">Caretaker</div></div>
+    <div class="step-line done"></div>
+    <div class="step-item"><div class="step-dot done">✓</div><div class="step-label">Prescription</div></div>
+    <div class="step-line done"></div>
+    <div class="step-item"><div class="step-dot active">5</div><div class="step-label active">Schedule</div></div>
+  </div>
+
+  <div style="text-align:center;margin-bottom:28px">
+    <h2 style="font-family:'Playfair Display',serif;font-size:1.8rem;font-weight:700">
+      {% if existing_medicines|length > 0 %}✏️ Edit Medicine Schedule{% else %}💊 Medicine Schedule Setup{% endif %}
+    </h2>
+    <p style="color:var(--text-muted)">
+      {% if existing_medicines|length > 0 %}
+        Your prescription medicines are pre-filled — update details or add new ones
+      {% else %}
+        Set <strong>custom AM/PM reminder times</strong> for each medicine
+      {% endif %}
+    </p>
+  </div>
+
+  <div class="card mb-24" style="background:linear-gradient(135deg,#ebf8ff,#e6fffa);border:2px solid var(--border)">
+    <div style="display:flex;align-items:center;gap:12px">
+      <div style="font-size:2rem">⏰</div>
+      <div>
+        <div style="font-weight:800;color:var(--primary)">How to add time:</div>
+        <div style="font-size:0.875rem;color:var(--text-muted)">
+          1️⃣ Select Hour → 2️⃣ Select Minute → 3️⃣ Click AM or PM → 4️⃣ Click <strong>"+ Add Time"</strong>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <form method="POST" action="{{ url_for('medicine_form') }}" id="medForm">
+    <div id="medicinesContainer">
+
+      {# SERVER-SIDE render: each existing medicine row with all fields pre-filled #}
+      {% for med in existing_medicines %}
+      {% set idx = loop.index0 %}
+      <div class="med-row" id="med-row-{{ idx }}">
+        <div class="med-row-header">
+          <div style="display:flex;align-items:center;gap:12px">
+            <div class="med-row-num">{{ loop.index }}</div>
+            <span style="font-weight:800;font-size:1rem">Medicine #{{ loop.index }}</span>
+            {% if med.times|length == 0 %}
+            <span style="background:#fff3cd;color:#856404;font-size:0.75rem;font-weight:700;padding:3px 10px;border-radius:20px;border:1px solid #ffc107">⚠️ No time set yet</span>
+            {% endif %}
+          </div>
+          <button type="button" onclick="removeMedRow({{ idx }})"
+            style="background:#fff5f5;color:#c53030;border:1px solid #fed7d7;border-radius:8px;padding:6px 14px;cursor:pointer;font-weight:700">✕ Remove</button>
+        </div>
+
+        <div class="grid-2">
+          <div class="form-group">
+            <label class="form-label">Medicine Name *</label>
+            <input type="text" name="med_name[]" value="{{ med.name }}" class="form-control" placeholder="e.g. Metformin" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Dosage</label>
+            <input type="text" name="med_dosage[]" value="{{ med.dosage }}" class="form-control" placeholder="e.g. 500mg">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">⏰ Set Reminder Time *</label>
+          <div style="background:var(--bg2);padding:16px;border-radius:12px;margin-bottom:12px">
+            <div style="display:flex;align-items:flex-end;gap:12px;flex-wrap:wrap">
+              <div>
+                <div style="font-size:0.75rem;font-weight:700;color:var(--text-muted);margin-bottom:6px">HOUR</div>
+                <select id="hr-{{ idx }}" class="form-control" style="width:80px">
+                  {% for h in [12,1,2,3,4,5,6,7,8,9,10,11] %}
+                  <option value="{{ h }}">{{ h }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+              <div>
+                <div style="font-size:0.75rem;font-weight:700;color:var(--text-muted);margin-bottom:6px">MINUTE</div>
+                <select id="min-{{ idx }}" class="form-control" style="width:80px">
+                  {% for m in range(0,60) %}
+                  <option value="{{ '%02d'|format(m) }}">{{ '%02d'|format(m) }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+              <div>
+                <div style="font-size:0.75rem;font-weight:700;color:var(--text-muted);margin-bottom:6px">AM / PM</div>
+                <div style="display:flex;gap:6px">
+                  <button type="button" id="ambtn-{{ idx }}" class="ampm-btn ampm-active" onclick="selectAMPM({{ idx }},'AM')">AM</button>
+                  <button type="button" id="pmbtn-{{ idx }}" class="ampm-btn ampm-inactive" onclick="selectAMPM({{ idx }},'PM')">PM</button>
+                </div>
+              </div>
+              <div>
+                <button type="button" onclick="addTimeFromPicker({{ idx }})"
+                  style="background:var(--primary);color:white;border:none;border-radius:8px;padding:11px 20px;font-size:0.95rem;font-weight:800;cursor:pointer">+ Add Time</button>
+              </div>
+            </div>
+          </div>
+
+          <div style="margin-bottom:10px">
+            <div style="font-size:0.78rem;font-weight:700;color:var(--text-muted);margin-bottom:8px">⚡ Quick Add:</div>
+            <div style="display:flex;flex-wrap:wrap;gap:4px" id="quickbtns-{{ idx }}"></div>
+          </div>
+
+          <div style="font-size:0.8rem;font-weight:700;color:var(--text-muted);margin-bottom:6px">Added Times:</div>
+
+          {# Render time badges SERVER-SIDE — guaranteed visible on page load, zero JS timing issues #}
+          <div id="badges-{{ idx }}" style="min-height:36px;display:flex;flex-wrap:wrap;align-items:center">
+            {% if med.times %}
+              {% for t in med.times %}
+                {% set parts = t.split(':') %}
+                {% set h = parts[0]|int %}
+                {% set min_str = parts[1] %}
+                {% set ampm = 'AM' if h < 12 else 'PM' %}
+                {% set hr12 = 12 if h % 12 == 0 else h % 12 %}
+                {% if h < 6 %}{% set em = '🌙' %}
+                {% elif h < 12 %}{% set em = '🌅' %}
+                {% elif h < 17 %}{% set em = '☀️' %}
+                {% elif h < 20 %}{% set em = '🌆' %}
+                {% else %}{% set em = '🌙' %}{% endif %}
+                <span class="time-badge">{{ em }} {{ hr12 }}:{{ min_str }} {{ ampm }}
+                  <button type="button" onclick="removeTimeFromBadge({{ idx }},'{{ t }}')">✕</button>
+                </span>
+              {% endfor %}
+            {% else %}
+              <span id="no-time-msg-{{ idx }}" style="color:var(--text-muted);font-size:0.85rem;font-style:italic">No times added yet — use picker above</span>
+            {% endif %}
+          </div>
+
+          {# Hidden inputs for existing times — submitted with the form #}
+          <div id="inputs-{{ idx }}">
+            {% for t in med.times %}
+            <input type="hidden" name="med_times_{{ idx }}[]" value="{{ t }}">
+            {% endfor %}
+          </div>
+        </div>
+
+        <div class="grid-2">
+          <div class="form-group">
+            <label class="form-label">Food Condition</label>
+            <select name="med_food[]" class="form-control form-select">
+              <option value="anytime" {% if med.food_condition == 'anytime' %}selected{% endif %}>Anytime</option>
+              <option value="before"  {% if med.food_condition == 'before'  %}selected{% endif %}>Before Food</option>
+              <option value="after"   {% if med.food_condition == 'after'   %}selected{% endif %}>After Food</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Total Tablets</label>
+            <input type="number" name="med_tablets[]" value="{{ med.tablets_remaining }}" min="1" max="365" class="form-control">
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+
+    </div>
+
+    <button type="button" onclick="addMedicineRow()" class="btn btn-outline mb-24">
+      + Add Another Medicine
+    </button>
+
+    <div style="display:flex;gap:16px;justify-content:flex-end;flex-wrap:wrap">
+      <a href="{{ url_for('prescription_upload') }}" class="btn btn-outline">← Back</a>
+      <button type="submit" class="btn btn-primary btn-lg" id="saveBtn">
+        ✅ Save Schedule & Go to Dashboard →
+      </button>
+    </div>
+  </form>
+</div>
+
+<style>
+.time-badge {
+  display:inline-flex;align-items:center;gap:6px;
+  background:var(--primary);color:white;
+  padding:8px 14px;border-radius:20px;
+  font-size:0.875rem;font-weight:700;
+  margin:4px;
+}
+.time-badge button {
+  background:rgba(255,255,255,0.3);border:none;color:white;
+  border-radius:50%;width:20px;height:20px;cursor:pointer;
+  font-size:0.75rem;display:flex;align-items:center;justify-content:center;padding:0;
+}
+.ampm-btn { min-width:52px;padding:8px 12px;font-size:0.9rem;font-weight:800;border-radius:8px;cursor:pointer;border:2px solid var(--primary); }
+.ampm-active   { background:var(--primary);color:white; }
+.ampm-inactive { background:white;color:var(--primary); }
+</style>
+
+<script>
+// ── Seed JS state from server-rendered data ───────────────────────────────────
+var EXISTING_MEDS = {{ existing_medicines | tojson }};
+var allMedTimes  = {};
+var selectedAMPM = {};
+
+EXISTING_MEDS.forEach(function(med, idx) {
+  allMedTimes[idx]  = med.times ? med.times.slice() : [];
+  selectedAMPM[idx] = 'AM';
+});
+
+// medCount starts after server-rendered rows so JS-added rows don't collide
+var medCount = EXISTING_MEDS.length;
+
+// ── Time helpers ──────────────────────────────────────────────────────────────
+function fmtTime(hhmm) {
+  var p = hhmm.split(':'), h = parseInt(p[0]), m = p[1];
+  var ap = h < 12 ? 'AM' : 'PM';
+  var hr = h % 12 === 0 ? 12 : h % 12;
+  var em = h < 6 ? '🌙' : h < 12 ? '🌅' : h < 17 ? '☀️' : h < 20 ? '🌆' : '🌙';
+  return em + ' ' + hr + ':' + m + ' ' + ap;
+}
+
+function toHHMM(hr, min, ampm) {
+  var h = parseInt(hr);
+  if (ampm === 'AM' && h === 12) h = 0;
+  if (ampm === 'PM' && h !== 12) h += 12;
+  return (h < 10 ? '0' + h : '' + h) + ':' + min;
+}
+
+function selectAMPM(idx, val) {
+  selectedAMPM[idx] = val;
+  var a = document.getElementById('ambtn-' + idx);
+  var p = document.getElementById('pmbtn-' + idx);
+  if (!a || !p) return;
+  a.className = val === 'AM' ? 'ampm-btn ampm-active' : 'ampm-btn ampm-inactive';
+  p.className = val === 'PM' ? 'ampm-btn ampm-active' : 'ampm-btn ampm-inactive';
+}
+
+function addTimeFromPicker(idx) {
+  var h = document.getElementById('hr-' + idx);
+  var m = document.getElementById('min-' + idx);
+  if (!h || !m) { alert('Select hour and minute first!'); return; }
+  addTimeToBadge(idx, toHHMM(h.value, m.value, selectedAMPM[idx] || 'AM'));
+}
+
+function addTimeToBadge(idx, hhmm) {
+  if (!allMedTimes[idx]) allMedTimes[idx] = [];
+  if (allMedTimes[idx].indexOf(hhmm) !== -1) { alert('Already added!'); return; }
+  allMedTimes[idx].push(hhmm);
+  allMedTimes[idx].sort();
+  renderBadges(idx);
+}
+
+function removeTimeFromBadge(idx, hhmm) {
+  if (!allMedTimes[idx]) return;
+  allMedTimes[idx] = allMedTimes[idx].filter(function(t){ return t !== hhmm; });
+  renderBadges(idx);
+}
+
+function renderBadges(idx) {
+  var bc = document.getElementById('badges-' + idx);
+  var ic = document.getElementById('inputs-' + idx);
+  if (!bc || !ic) return;
+  var times = allMedTimes[idx] || [];
+  if (times.length === 0) {
+    bc.innerHTML = '<span style="color:var(--text-muted);font-size:0.85rem;font-style:italic">No times added yet — use picker above</span>';
+    ic.innerHTML = '';
+    return;
+  }
+  var bh = '', ih = '';
+  times.forEach(function(t) {
+    bh += '<span class="time-badge">' + fmtTime(t) +
+          '<button type="button" onclick="removeTimeFromBadge(' + idx + ',\'' + t + '\')">✕</button></span>';
+    ih += '<input type="hidden" name="med_times_' + idx + '[]" value="' + t + '">';
+  });
+  bc.innerHTML = bh;
+  ic.innerHTML = ih;
+}
+
+// ── Quick-add buttons ─────────────────────────────────────────────────────────
+var QUICK_TIMES = [
+  ['06:00','6 AM'],['07:00','7 AM'],['08:00','8 AM'],['09:00','9 AM'],
+  ['10:00','10 AM'],['12:00','12 PM'],['13:00','1 PM'],['14:00','2 PM'],
+  ['16:00','4 PM'],['18:00','6 PM'],['20:00','8 PM'],['21:00','9 PM'],
+  ['21:30','9:30 PM'],['22:00','10 PM']
+];
+
+function buildQuickBtns(idx) {
+  var el = document.getElementById('quickbtns-' + idx);
+  if (!el) return;
+  el.innerHTML = QUICK_TIMES.map(function(qt) {
+    return '<button type="button" onclick="addTimeToBadge(' + idx + ',\'' + qt[0] + '\')" ' +
+      'style="background:white;color:var(--primary);border:1px solid var(--border);' +
+      'border-radius:8px;padding:5px 10px;font-size:0.78rem;font-weight:700;cursor:pointer;margin:2px">' +
+      qt[1] + '</button>';
+  }).join('');
+}
+
+function removeMedRow(idx) {
+  var row = document.getElementById('med-row-' + idx);
+  if (row) row.remove();
+}
+
+// ── Add new JS-created medicine row ──────────────────────────────────────────
+function addMedicineRow() {
+  var idx = medCount++;
+  allMedTimes[idx]  = [];
+  selectedAMPM[idx] = 'AM';
+
+  var ho = [12,1,2,3,4,5,6,7,8,9,10,11].map(function(h){ return '<option value="'+h+'">'+h+'</option>'; }).join('');
+  var mo = '';
+  for (var m=0; m<60; m++) { var ms=m<10?'0'+m:''+m; mo+='<option value="'+ms+'">'+ms+'</option>'; }
+
+  document.getElementById('medicinesContainer').insertAdjacentHTML('beforeend',
+    '<div class="med-row" id="med-row-'+idx+'">' +
+      '<div class="med-row-header">' +
+        '<div style="display:flex;align-items:center;gap:12px">' +
+          '<div class="med-row-num">'+(idx+1)+'</div>' +
+          '<span style="font-weight:800;font-size:1rem">Medicine #'+(idx+1)+'</span>' +
+        '</div>' +
+        '<button type="button" onclick="removeMedRow('+idx+')" ' +
+          'style="background:#fff5f5;color:#c53030;border:1px solid #fed7d7;border-radius:8px;padding:6px 14px;cursor:pointer;font-weight:700">✕ Remove</button>' +
+      '</div>' +
+      '<div class="grid-2">' +
+        '<div class="form-group"><label class="form-label">Medicine Name *</label>' +
+          '<input type="text" name="med_name[]" value="" class="form-control" placeholder="e.g. Metformin" required></div>' +
+        '<div class="form-group"><label class="form-label">Dosage</label>' +
+          '<input type="text" name="med_dosage[]" value="" class="form-control" placeholder="e.g. 500mg"></div>' +
+      '</div>' +
+      '<div class="form-group"><label class="form-label">⏰ Set Reminder Time *</label>' +
+        '<div style="background:var(--bg2);padding:16px;border-radius:12px;margin-bottom:12px">' +
+          '<div style="display:flex;align-items:flex-end;gap:12px;flex-wrap:wrap">' +
+            '<div><div style="font-size:0.75rem;font-weight:700;color:var(--text-muted);margin-bottom:6px">HOUR</div>' +
+              '<select id="hr-'+idx+'" class="form-control" style="width:80px">'+ho+'</select></div>' +
+            '<div><div style="font-size:0.75rem;font-weight:700;color:var(--text-muted);margin-bottom:6px">MINUTE</div>' +
+              '<select id="min-'+idx+'" class="form-control" style="width:80px">'+mo+'</select></div>' +
+            '<div><div style="font-size:0.75rem;font-weight:700;color:var(--text-muted);margin-bottom:6px">AM / PM</div>' +
+              '<div style="display:flex;gap:6px">' +
+                '<button type="button" id="ambtn-'+idx+'" class="ampm-btn ampm-active" onclick="selectAMPM('+idx+',\'AM\')">AM</button>' +
+                '<button type="button" id="pmbtn-'+idx+'" class="ampm-btn ampm-inactive" onclick="selectAMPM('+idx+',\'PM\')">PM</button>' +
+              '</div></div>' +
+            '<div><button type="button" onclick="addTimeFromPicker('+idx+')" ' +
+              'style="background:var(--primary);color:white;border:none;border-radius:8px;padding:11px 20px;font-size:0.95rem;font-weight:800;cursor:pointer">+ Add Time</button></div>' +
+          '</div></div>' +
+        '<div style="margin-bottom:10px"><div style="font-size:0.78rem;font-weight:700;color:var(--text-muted);margin-bottom:8px">⚡ Quick Add:</div>' +
+          '<div style="display:flex;flex-wrap:wrap;gap:4px" id="quickbtns-'+idx+'"></div></div>' +
+        '<div style="font-size:0.8rem;font-weight:700;color:var(--text-muted);margin-bottom:6px">Added Times:</div>' +
+        '<div id="badges-'+idx+'" style="min-height:36px;display:flex;flex-wrap:wrap;align-items:center">' +
+          '<span style="color:var(--text-muted);font-size:0.85rem;font-style:italic">No times added yet — use picker above</span></div>' +
+        '<div id="inputs-'+idx+'"></div>' +
+      '</div>' +
+      '<div class="grid-2">' +
+        '<div class="form-group"><label class="form-label">Food Condition</label>' +
+          '<select name="med_food[]" class="form-control form-select">' +
+            '<option value="anytime" selected>Anytime</option>' +
+            '<option value="before">Before Food</option>' +
+            '<option value="after">After Food</option>' +
+          '</select></div>' +
+        '<div class="form-group"><label class="form-label">Total Tablets</label>' +
+          '<input type="number" name="med_tablets[]" value="30" min="1" max="365" class="form-control"></div>' +
+      '</div>' +
+    '</div>'
+  );
+  buildQuickBtns(idx);
+}
+
+// ── Form submit validation ────────────────────────────────────────────────────
+document.getElementById('medForm').onsubmit = function(e) {
+  var rows = document.querySelectorAll('.med-row');
+  if (!rows.length) { e.preventDefault(); alert('Please add at least one medicine!'); return false; }
+  for (var r = 0; r < rows.length; r++) {
+    var idx    = parseInt(rows[r].id.replace('med-row-',''));
+    var nameEl = rows[r].querySelector('input[name="med_name[]"]');
+    if (nameEl && nameEl.value.trim() && (!allMedTimes[idx] || allMedTimes[idx].length === 0)) {
+      e.preventDefault();
+      alert('Please add at least one reminder time for "' + nameEl.value.trim() + '"!\n\n' +
+            'Steps:\n1. Select Hour\n2. Select Minute\n3. Click AM or PM\n4. Click "+ Add Time"');
+      return false;
+    }
+  }
+  return true;
+};
+
+// ── On load: build quick-add buttons + blank rows if no medicines ─────────────
+window.onload = function() {
+  EXISTING_MEDS.forEach(function(med, idx) { buildQuickBtns(idx); });
+  if (EXISTING_MEDS.length === 0) { addMedicineRow(); addMedicineRow(); }
+
+  // Voice guidance
+  const VOICE_ENABLED = {{ 'true' if session.get('voice_enabled') else 'false' }};
+  if (!VOICE_ENABLED) return;
+  const synth = window.speechSynthesis;
+  function speak(t){ synth.cancel(); const u=new SpeechSynthesisUtterance(t); u.lang='en-IN'; u.rate=0.88; synth.speak(u); }
+  setTimeout(() =>
+    speak('Step 5. Medicine Schedule. For each medicine, enter the name, dosage, and choose the times you need to take it. You can add more medicines using the Add Medicine button. When finished, press Save Schedule to go to your dashboard.'), 800);
+  document.querySelector('form') && document.querySelector('form').addEventListener('submit', () =>
+    speak('Schedule saved. Taking you to your dashboard now.'));
+};
+</script>
+{% endblock %}

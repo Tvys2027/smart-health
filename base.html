@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}Smart Voice-Assisted Healthcare Platform{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💊</text></svg>">
+</head>
+<body>
+
+<nav class="navbar">
+  <a class="brand" href="{{ url_for('index') }}">
+    <div class="brand-icon">💊</div>
+    <div>
+      <div class="brand-text">SmartHealth</div>
+      <div class="brand-sub">Voice-Assisted Care Platform</div>
+    </div>
+  </a>
+  <div class="navbar-links">
+    <a href="{{ url_for('index') }}">Home</a>
+    {% if session.get('user_id') %}
+      <a href="{{ url_for('user_dashboard') }}">My Dashboard</a>
+      <a href="{{ url_for('logout') }}">Logout</a>
+    {% elif session.get('caretaker_id') %}
+      <a href="{{ url_for('caretaker_dashboard') }}">Dashboard</a>
+      <a href="{{ url_for('caretaker_logout') }}">Logout</a>
+    {% elif session.get('admin_id') %}
+      <a href="{{ url_for('admin_dashboard') }}">Admin Panel</a>
+      <a href="{{ url_for('admin_logout') }}">Logout</a>
+    {% elif session.get('doctor_id') %}
+      <a href="{{ url_for('doctor_dashboard') }}">Doctor Dashboard</a>
+      <a href="{{ url_for('doctor_logout') }}">Logout</a>
+    {% else %}
+      <a href="{{ url_for('register') }}">Register</a>
+      <a href="{{ url_for('user_login') }}">User Login</a>
+      <a href="{{ url_for('caretaker_login') }}">Caretaker</a>
+      <a href="{{ url_for('doctor_login') }}">Doctor</a>
+      <a href="{{ url_for('admin_login') }}">Admin</a>
+    {% endif %}
+  </div>
+</nav>
+
+{% with messages = get_flashed_messages(with_categories=True) %}
+  {% if messages %}
+    <div class="flash-container">
+      {% for cat, msg in messages %}
+        <div class="flash-msg {{ cat }}">
+          {% if cat == 'success' %}✅{% else %}⚠️{% endif %} {{ msg }}
+        </div>
+      {% endfor %}
+    </div>
+  {% endif %}
+{% endwith %}
+
+{% block content %}{% endblock %}
+
+<footer>
+  <div>💊 <strong>SmartHealth Platform</strong> — Empowering Elderly Care with AI & Voice Technology</div>
+  <div style="margin-top:6px">For support: <a href="mailto:support@smarthealth.care">support@smarthealth.care</a></div>
+</footer>
+
+<script src="{{ url_for('static', filename='js/main.js') }}"></script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

@@ -1,0 +1,324 @@
+{% extends 'base.html' %}
+{% block title %}Doctor Dashboard — SmartHealth{% endblock %}
+{% block content %}
+<!-- VIDEO CALL FULLSCREEN -->
+<div id="videoCallScreen" style="display:none;position:fixed;inset:0;background:#0f172a;z-index:9999;flex-direction:column">
+  <!-- Top bar -->
+  <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 20px;background:#1e293b;border-bottom:1px solid #334155;flex-shrink:0">
+    <div style="display:flex;align-items:center;gap:12px">
+      <div id="callDot" style="width:12px;height:12px;border-radius:50%;background:#f59e0b"></div>
+      <div>
+        <div style="color:white;font-weight:900;font-size:1rem" id="docCallTitle">📹 Video Call — {% if patient %}{{ patient.name }}{% else %}Patient{% endif %}</div>
+        <div style="color:#94a3b8;font-size:0.78rem" id="docCallStatus">Waiting to connect…</div>
+      </div>
+    </div>
+    <div style="display:flex;align-items:center;gap:12px">
+      <div id="docCallTimer" style="color:#10b981;font-weight:900;font-size:1.1rem;display:none">00:00</div>
+      <button onclick="endDocCall()" class="btn btn-danger" style="padding:8px 20px;font-weight:800">📵 End Call</button>
+    </div>
+  </div>
+  <!-- Jitsi iframe fills rest of screen -->
+  <div id="docJitsiContainer" style="flex:1;width:100%;background:#000"></div>
+</div>
+
+<div class="dash-layout">
+  <!-- SIDEBAR -->
+  <div class="sidebar">
+    <div class="sidebar-header" style="background:linear-gradient(135deg,#0f766e,#10b981)">
+      <div style="font-size:1.1rem;font-weight:900">🩺 {{ doctor.name }}</div>
+      <div style="font-size:0.8rem;opacity:0.85;margin-top:4px">{{ doctor.specialist }}</div>
+      {% if avg_rating > 0 %}
+      <div style="margin-top:8px;font-size:0.85rem;color:#a7f3d0">
+        ⭐ {{ avg_rating }} / 5.0 &nbsp;({{ reviews|length }} reviews)
+      </div>
+      {% endif %}
+    </div>
+    <nav class="sidebar-nav">
+      <a href="#doctor-info" class="sidebar-link active"><span class="sidebar-icon">🩺</span> My Profile</a>
+      <a href="#patient-section" class="sidebar-link"><span class="sidebar-icon">👤</span> My Patient</a>
+      <a href="#medicines-section" class="sidebar-link"><span class="sidebar-icon">💊</span> Medicines</a>
+      <a href="#alerts-section" class="sidebar-link"><span class="sidebar-icon">🔔</span> Alerts</a>
+      <a href="#reviews-section" class="sidebar-link"><span class="sidebar-icon">⭐</span> Reviews</a>
+      {% if patient %}
+      <button onclick="startDocCall()" class="sidebar-link" style="width:100%;text-align:left;background:linear-gradient(135deg,#10b981,#059669);color:white;border:none;cursor:pointer;font-weight:900;border-radius:10px;margin-top:8px">
+        <span class="sidebar-icon">📹</span> Video Call Patient
+      </button>
+      {% endif %}
+      <a href="{{ url_for('doctor_logout') }}" class="sidebar-link" style="color:var(--red)"><span class="sidebar-icon">🚪</span> Logout</a>
+    </nav>
+  </div>
+
+  <!-- MAIN -->
+  <main class="dash-main">
+    <div class="d-flex justify-between align-center mb-24" style="flex-wrap:wrap;gap:16px">
+      <div>
+        <div class="dash-title">Welcome, {{ doctor.name }}! 🩺</div>
+        <div class="dash-subtitle">{{ today.strftime('%A, %d %B %Y') }} &nbsp;|&nbsp; {{ doctor.specialist }}</div>
+      </div>
+      {% if patient %}
+      <button onclick="startDocCall()" class="btn btn-lg" style="background:linear-gradient(135deg,#10b981,#059669);color:white;border:none;padding:14px 28px;font-weight:900;box-shadow:0 4px 15px rgba(16,185,129,0.4);border-radius:16px">
+        📹 Video Call Patient
+      </button>
+      {% endif %}
+    </div>
+
+    <!-- DOCTOR PROFILE CARD -->
+    <div id="doctor-info" class="card mb-24" style="border-top:4px solid #10b981">
+      <div class="card-header">
+        <div class="card-icon">🩺</div>
+        <div class="card-title">My Profile</div>
+      </div>
+      <div class="grid-2" style="gap:16px">
+        <div>
+          <div style="font-size:0.75rem;color:var(--text-muted);font-weight:700">NAME</div>
+          <div style="font-weight:900;font-size:1.2rem">{{ doctor.name }}</div>
+        </div>
+        <div>
+          <div style="font-size:0.75rem;color:var(--text-muted);font-weight:700">SPECIALIST</div>
+          <div style="font-weight:800;color:#0f766e;font-size:1rem">{{ doctor.specialist }}</div>
+        </div>
+        <div>
+          <div style="font-size:0.75rem;color:var(--text-muted);font-weight:700">QUALIFICATION</div>
+          <div style="font-weight:700">{{ doctor.qualification }}</div>
+        </div>
+        <div>
+          <div style="font-size:0.75rem;color:var(--text-muted);font-weight:700">MOBILE</div>
+          <div style="font-weight:700">{{ doctor.phone }}</div>
+        </div>
+      </div>
+      {% if avg_rating > 0 %}
+      <div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border);display:flex;align-items:center;gap:12px">
+        <div style="font-size:2rem;font-weight:900;color:#f59e0b">{{ avg_rating }}</div>
+        <div>
+          <div style="font-size:1.2rem">
+            {% for i in range(1,6) %}
+              {% if i <= avg_rating|int %}⭐{% else %}☆{% endif %}
+            {% endfor %}
+          </div>
+          <div style="font-size:0.8rem;color:var(--text-muted)">{{ reviews|length }} patient review(s)</div>
+        </div>
+      </div>
+      {% endif %}
+    </div>
+
+    <!-- PATIENT SECTION -->
+    <div id="patient-section" class="mb-24">
+      <h3 style="font-family:'Playfair Display',serif;font-size:1.4rem;font-weight:700;margin-bottom:16px">👤 Assigned Patient</h3>
+      {% if patient %}
+      <div class="card" style="border-top:4px solid var(--primary)">
+        <div class="grid-2" style="gap:16px;margin-bottom:16px">
+          <div>
+            <div style="font-size:0.75rem;color:var(--text-muted);font-weight:700">NAME</div>
+            <div style="font-weight:900;font-size:1.15rem">{{ patient.name }}</div>
+          </div>
+          <div>
+            <div style="font-size:0.75rem;color:var(--text-muted);font-weight:700">AGE</div>
+            <div style="font-weight:800">{{ patient.age }} years</div>
+          </div>
+          <div>
+            <div style="font-size:0.75rem;color:var(--text-muted);font-weight:700">MOBILE</div>
+            <div style="font-weight:700"><a href="tel:{{ patient.phone }}" style="color:var(--primary)">{{ patient.phone }}</a></div>
+          </div>
+          <div>
+            <div style="font-size:0.75rem;color:var(--text-muted);font-weight:700">CONDITIONS</div>
+            <div style="font-weight:700;font-size:0.9rem">{{ patient.diseases or 'None specified' }}</div>
+          </div>
+          {% if patient.physical_conditions %}
+          <div style="grid-column:span 2">
+            <div style="font-size:0.75rem;color:var(--text-muted);font-weight:700">PHYSICAL CONDITIONS</div>
+            <div style="font-weight:700;font-size:0.9rem">{{ patient.physical_conditions }}</div>
+          </div>
+          {% endif %}
+        </div>
+        <div style="display:flex;gap:12px;flex-wrap:wrap">
+          <a href="tel:{{ patient.phone }}" class="btn btn-primary btn-sm">📞 Call Patient</a>
+          <button onclick="startDocCall()" class="btn btn-sm" style="background:#10b981;color:white;border:none;font-weight:800">📹 Video Call</button>
+          {% if patient.alt_phone %}
+          <a href="tel:{{ patient.alt_phone }}" class="btn btn-outline btn-sm">📞 Alt: {{ patient.alt_phone }}</a>
+          {% endif %}
+        </div>
+      </div>
+      {% else %}
+      <div class="card text-center" style="padding:40px;color:var(--text-muted)">
+        <div style="font-size:3rem;margin-bottom:12px">👤</div>
+        <div style="font-weight:700">No patient assigned yet</div>
+        <div style="font-size:0.85rem;margin-top:8px">Ask the admin to assign a patient to your account</div>
+      </div>
+      {% endif %}
+    </div>
+
+    {% if patient %}
+    <!-- STATS -->
+    <div class="grid-4 mb-24">
+      <div class="stat-card" style="border-color:var(--primary)">
+        <div class="stat-number">{{ medicines|length }}</div>
+        <div class="stat-label">Active Medicines</div>
+      </div>
+      <div class="stat-card" style="border-color:var(--green)">
+        <div class="stat-number text-green">{{ today_grids.values()|selectattr('taken')|list|length }}</div>
+        <div class="stat-label">Taken Today</div>
+      </div>
+      <div class="stat-card" style="border-color:var(--red)">
+        <div class="stat-number text-red">{{ alerts|selectattr('alert_type','equalto','missed')|list|length }}</div>
+        <div class="stat-label">Missed Doses</div>
+      </div>
+      <div class="stat-card" style="border-color:var(--orange)">
+        <div class="stat-number" style="color:var(--orange)">{% set low_count = namespace(v=0) %}{% for m in medicines %}{% if m.tablets_remaining <= 5 %}{% set low_count.v = low_count.v + 1 %}{% endif %}{% endfor %}{{ low_count.v }}</div>
+        <div class="stat-label">Low Stock</div>
+      </div>
+    </div>
+
+    <!-- MEDICINES -->
+    <div id="medicines-section" class="mb-24">
+      <h3 style="font-family:'Playfair Display',serif;font-size:1.4rem;font-weight:700;margin-bottom:16px">💊 Patient's Medicines Today</h3>
+      {% for med in medicines %}
+      <div class="card mb-12" style="padding:18px">
+        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px">
+          <div>
+            <div style="font-weight:800;font-size:1rem">{{ med.name }}</div>
+            <div style="font-size:0.85rem;color:var(--text-muted)">{{ med.dosage or '' }}</div>
+            <div class="med-tags mt-8">
+              {% for t in med.get_times() %}
+                {% set h = t.split(':')[0]|int %}
+                {% set ms = t.split(':')[1] %}
+                {% set ap = 'AM' if h < 12 else 'PM' %}
+                {% set hr = 12 if h % 12 == 0 else h % 12 %}
+                <span class="tag" style="background:var(--bg2);color:var(--primary)">⏰ {{ hr }}:{{ ms }} {{ ap }}</span>
+              {% endfor %}
+            </div>
+          </div>
+          <div style="text-align:right">
+            {% set grid = today_grids.get(med.id) %}
+            {% if grid and grid.taken %}
+              <span class="badge badge-green">✅ Taken</span>
+              <div style="font-size:0.75rem;color:var(--text-muted);margin-top:4px">{{ grid.taken_at.strftime('%I:%M %p') if grid.taken_at }}</div>
+            {% else %}
+              <span class="badge badge-red">⏳ Not yet taken</span>
+            {% endif %}
+            <div style="margin-top:6px;font-size:0.8rem;color:{{ 'var(--red)' if med.tablets_remaining <= 2 else 'var(--text-muted)' }}">
+              {{ med.tablets_remaining }} tablets left
+            </div>
+          </div>
+        </div>
+      </div>
+      {% else %}
+      <div class="card text-center" style="padding:24px;color:var(--text-muted)">No medicines added for this patient</div>
+      {% endfor %}
+    </div>
+
+    <!-- ALERTS -->
+    <div id="alerts-section" class="mb-24">
+      <h3 style="font-family:'Playfair Display',serif;font-size:1.4rem;font-weight:700;margin-bottom:16px">🔔 Patient Alert History</h3>
+      {% for alert in alerts %}
+      <div class="alert-box {{ 'error' if alert.alert_type == 'emergency' else 'warning' if alert.alert_type == 'missed' else 'info' }} mb-8">
+        <div class="alert-icon">{{ '🚨' if alert.alert_type == 'emergency' else '⚠️' if alert.alert_type == 'missed' else '💊' }}</div>
+        <div style="flex:1">
+          <div class="alert-msg">{{ alert.message }}</div>
+          <div class="alert-time">{{ alert.created_at.strftime('%d %b %Y, %I:%M %p') }}</div>
+        </div>
+        <span class="badge badge-{{ 'red' if alert.alert_type == 'emergency' else 'orange' }}">{{ alert.alert_type|upper }}</span>
+      </div>
+      {% else %}
+        <div class="card text-center" style="padding:24px;color:var(--text-muted)">No alerts recorded</div>
+      {% endfor %}
+    </div>
+    {% endif %}
+
+    <!-- REVIEWS -->
+    <div id="reviews-section" class="mb-24">
+      <h3 style="font-family:'Playfair Display',serif;font-size:1.4rem;font-weight:700;margin-bottom:16px">⭐ Patient Reviews</h3>
+      {% if reviews %}
+        {% for review in reviews %}
+        <div class="card mb-12" style="padding:18px;border-left:4px solid #f59e0b">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+            <div style="font-size:1.1rem">
+              {% for i in range(1,6) %}{% if i <= review.rating %}⭐{% else %}☆{% endif %}{% endfor %}
+            </div>
+            <span style="font-weight:900;color:#f59e0b">{{ review.rating }}/5</span>
+            <span style="font-size:0.78rem;color:var(--text-muted);margin-left:auto">{{ review.created_at.strftime('%d %b %Y') }}</span>
+          </div>
+          {% if review.comment %}
+          <div style="font-size:0.92rem;color:var(--text);font-style:italic">"{{ review.comment }}"</div>
+          {% endif %}
+        </div>
+        {% endfor %}
+      {% else %}
+        <div class="card text-center" style="padding:40px;color:var(--text-muted)">
+          <div style="font-size:3rem;margin-bottom:12px">⭐</div>
+          <div>No reviews yet from patients</div>
+        </div>
+      {% endif %}
+    </div>
+
+  </main>
+</div>
+
+{% block scripts %}
+<script src="https://meet.jit.si/external_api.js"></script>
+<script>
+// Unique room = SmartHealth + doctorID + patientID — same for both sides
+const ROOM_NAME = 'SmartHealthConsult-{{ doctor.id }}-{% if patient %}{{ patient.id }}{% else %}0{% endif %}';
+const DOCTOR_NAME = '{{ doctor.name }}';
+const PATIENT_NAME = '{% if patient %}{{ patient.name }}{% else %}Patient{% endif %}';
+
+let jitsiApi = null;
+let callInterval = null;
+let callSeconds = 0;
+
+function startDocCall() {
+  const screen = document.getElementById('videoCallScreen');
+  screen.style.display = 'flex';
+  screen.style.flexDirection = 'column';
+
+  document.getElementById('docCallDot') && (document.getElementById('docCallDot').style.background = '#f59e0b');
+  document.getElementById('docCallStatus').textContent = 'Connecting…';
+
+  const container = document.getElementById('docJitsiContainer');
+  container.innerHTML = '';
+
+  jitsiApi = new JitsiMeetExternalAPI('meet.jit.si', {
+    roomName: ROOM_NAME,
+    parentNode: container,
+    width: '100%',
+    height: '100%',
+    userInfo: { displayName: 'Dr. ' + DOCTOR_NAME },
+    configOverwrite: {
+      startWithAudioMuted: false,
+      startWithVideoMuted: false,
+      disableDeepLinking: true,
+      enableWelcomePage: false,
+      prejoinPageEnabled: false,
+    },
+    interfaceConfigOverwrite: {
+      SHOW_JITSI_WATERMARK: false,
+      SHOW_BRAND_WATERMARK: false,
+      TOOLBAR_BUTTONS: ['microphone','camera','hangup','chat','fullscreen','tileview','videoquality'],
+    }
+  });
+
+  jitsiApi.addEventListener('videoConferenceJoined', () => {
+    document.getElementById('docCallStatus').textContent = '● Live — ' + PATIENT_NAME;
+    document.getElementById('docCallDot') && (document.getElementById('docCallDot').style.background = '#10b981');
+    document.getElementById('docCallTimer').style.display = 'block';
+    callSeconds = 0;
+    callInterval = setInterval(() => {
+      callSeconds++;
+      const m = String(Math.floor(callSeconds/60)).padStart(2,'0');
+      const s = String(callSeconds%60).padStart(2,'0');
+      document.getElementById('docCallTimer').textContent = m+':'+s;
+    }, 1000);
+  });
+
+  jitsiApi.addEventListener('readyToClose', endDocCall);
+}
+
+function endDocCall() {
+  if (jitsiApi) { try { jitsiApi.dispose(); } catch(e){} jitsiApi = null; }
+  if (callInterval) { clearInterval(callInterval); callInterval = null; }
+  document.getElementById('videoCallScreen').style.display = 'none';
+  document.getElementById('docCallTimer').style.display = 'none';
+  document.getElementById('docCallTimer').textContent = '00:00';
+}
+</script>
+{% endblock %}
+{% endblock %}

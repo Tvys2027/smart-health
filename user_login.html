@@ -1,0 +1,25 @@
+{% extends 'base.html' %}
+{% block title %}Patient Login — SmartHealth{% endblock %}
+{% block content %}
+<div class="container-sm page-section" style="max-width:480px">
+  <div class="card">
+    <div style="text-align:center;margin-bottom:28px">
+      <div style="font-size:3rem;margin-bottom:12px">👤</div>
+      <h2 style="font-family:'Playfair Display',serif;font-size:1.8rem;font-weight:700">Patient Login</h2>
+      <p style="color:var(--text-muted)">Enter your registered phone number</p>
+    </div>
+
+    <form method="POST">
+      <div class="form-group">
+        <label class="form-label">Registered Phone Number</label>
+        <input type="tel" name="phone" class="form-control" placeholder="+91 98765 43210" required style="font-size:1.1rem">
+      </div>
+      <button type="submit" class="btn btn-primary btn-block btn-lg">Login to Dashboard →</button>
+    </form>
+
+    <div style="text-align:center;margin-top:20px;padding-top:20px;border-top:1px solid var(--border)">
+      <p style="color:var(--text-muted)">New patient? <a href="{{ url_for('register') }}" style="color:var(--primary);font-weight:700">Register here</a></p>
+    </div>
+  </div>
+</div>
+{% endblock %}

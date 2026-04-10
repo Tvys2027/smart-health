@@ -1,0 +1,555 @@
+{% extends 'base.html' %}
+{% block title %}My Dashboard — SmartHealth{% endblock %}
+{% block content %}
+
+<!-- REMINDER POPUP -->
+<div id="reminderOverlay" class="popup-overlay hidden">
+  <div class="popup-box">
+    <div class="popup-icon">⏰</div>
+    <div class="popup-title" id="reminderMedName">Medicine</div>
+    <div style="font-size:0.95rem;color:var(--primary);font-weight:700;margin-bottom:4px" id="reminderTime"></div>
+    <div style="font-size:0.95rem;color:var(--text-muted);margin-bottom:4px" id="reminderDosage"></div>
+    <div class="popup-msg" id="reminderFood"></div>
+    <p class="popup-msg">Did you take this medicine?</p>
+    <div class="popup-btns">
+      <button class="btn btn-primary btn-lg" id="yesTakenBtn" onclick="onReminderYes()">✅ YES, Taken</button>
+      <button class="btn btn-danger btn-lg" onclick="onReminderNo()">❌ NO, Snooze</button>
+    </div>
+  </div>
+</div>
+
+<div class="dash-layout">
+  <!-- SIDEBAR -->
+  <div class="sidebar">
+    <div class="sidebar-header">
+      <div style="font-size:1.2rem;font-weight:900">{{ user.name }}</div>
+      <div style="font-size:0.8rem;opacity:0.8;margin-top:4px">{{ user.phone }}</div>
+      {% if user.voice_enabled %}
+      <div class="voice-badge mt-8">
+        <div class="voice-wave"><span></span><span></span><span></span><span></span></div>
+        Voice Active
+      </div>
+      {% endif %}
+    </div>
+    <nav class="sidebar-nav">
+      <a href="#overview"  class="sidebar-link active"><span class="sidebar-icon">📊</span> Overview</a>
+      <a href="#medicines" class="sidebar-link"><span class="sidebar-icon">💊</span> Medicines</a>
+      <a href="#schedule"  class="sidebar-link"><span class="sidebar-icon">⏰</span> Today's Schedule</a>
+      <a href="#food"      class="sidebar-link"><span class="sidebar-icon">🍽️</span> Food Reminders</a>
+      <a href="#exercise"  class="sidebar-link"><span class="sidebar-icon">🏃</span> Exercise Plan</a>
+      <a href="#alerts"    class="sidebar-link"><span class="sidebar-icon">🔔</span> Alert History</a>
+      <a href="#my-doctor" class="sidebar-link"><span class="sidebar-icon">🩺</span> My Doctor</a>
+      <a href="#review-section" class="sidebar-link" id="reviewSidebarLink" style="display:none"><span class="sidebar-icon">⭐</span> Rate Doctor</a>
+      <a href="{{ url_for('medicine_form') }}" class="sidebar-link"><span class="sidebar-icon">📋</span> Edit Schedule</a>
+      <a href="{{ url_for('prescription_upload') }}" class="sidebar-link"><span class="sidebar-icon">📷</span> Upload Rx</a>
+      <a href="{{ url_for('logout') }}" class="sidebar-link" style="color:var(--red)"><span class="sidebar-icon">🚪</span> Logout</a>
+    </nav>
+  </div>
+
+  <!-- MAIN -->
+  <main class="dash-main">
+    <div class="d-flex justify-between align-center mb-24" style="flex-wrap:wrap;gap:16px">
+      <div>
+        <div class="dash-title">Good day, {{ user.name }}! 👋</div>
+        <div class="dash-subtitle">{{ today.strftime('%A, %d %B %Y') }}</div>
+      </div>
+      <button class="emergency-btn" onclick="triggerEmergency()" style="width:auto;padding:14px 24px;font-size:1rem">
+        🚨 EMERGENCY ALERT
+      </button>
+    </div>
+
+    <!-- STATS -->
+    <div id="overview" class="grid-4 mb-24">
+      <div class="stat-card" style="border-color:var(--primary)">
+        <div class="stat-number">{{ medicines|length }}</div>
+        <div class="stat-label">Active Medicines</div>
+      </div>
+      <div class="stat-card" style="border-color:var(--green)">
+        <div class="stat-number">{{ today_grids.values()|selectattr('taken')|list|length }}</div>
+        <div class="stat-label">Taken Today</div>
+      </div>
+      <div class="stat-card" style="border-color:var(--orange)">
+        <div class="stat-number">{% set low_count = namespace(v=0) %}{% for m in medicines %}{% if m.tablets_remaining <= 5 %}{% set low_count.v = low_count.v + 1 %}{% endif %}{% endfor %}{{ low_count.v }}</div>
+        <div class="stat-label">Low Stock</div>
+      </div>
+      <div class="stat-card" style="border-color:var(--red)">
+        <div class="stat-number">{{ alerts|selectattr('alert_type','equalto','missed')|list|length }}</div>
+        <div class="stat-label">Missed Doses</div>
+      </div>
+    </div>
+
+    <!-- TODAY'S SCHEDULE — time-ordered view -->
+    <div id="schedule" class="mb-24">
+      <h3 style="font-family:'Playfair Display',serif;font-size:1.4rem;font-weight:700;margin-bottom:16px">⏰ Today's Reminder Schedule</h3>
+      <div id="scheduleTimeline">
+        <!-- Rendered by JS below -->
+      </div>
+    </div>
+
+    <!-- MEDICINE CARDS -->
+    <div id="medicines" class="mb-24">
+      <h3 style="font-family:'Playfair Display',serif;font-size:1.4rem;font-weight:700;margin-bottom:16px">💊 Your Medicines</h3>
+      {% if medicines %}
+        {% for med in medicines %}
+        <div class="med-card mb-16" data-med-id="{{ med.id }}">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px">
+            <div>
+              <div class="med-name">{{ med.name }}</div>
+              {% if med.dosage %}<div class="med-dosage">{{ med.dosage }}</div>{% endif %}
+              <div class="med-tags mt-8">
+                {% for t in med.get_times() %}
+                  {% set h = t.split(':')[0]|int %}
+                  {% set m_str = t.split(':')[1] %}
+                  {% set ampm = 'AM' if h < 12 else 'PM' %}
+                  {% set hr = 12 if h % 12 == 0 else h % 12 %}
+                  <span class="tag" style="background:var(--bg2);color:var(--primary)">
+                    ⏰ {{ hr }}:{{ m_str }} {{ ampm }}
+                  </span>
+                {% endfor %}
+                {% if med.food_condition != 'anytime' %}
+                  <span class="tag {{ med.food_condition }}">🍽️ {{ med.food_condition|capitalize }} Food</span>
+                {% endif %}
+              </div>
+            </div>
+            <div style="text-align:right">
+              {% set grid = today_grids.get(med.id) %}
+              {% set taken_today = grid and grid.taken and grid.taken_at and grid.taken_at.date() == today %}
+              {% if taken_today %}
+                <button class="btn btn-sm badge-green take-btn" disabled>✅ Taken Today</button>
+              {% else %}
+                <button class="btn btn-primary btn-sm take-btn" onclick="takeMedicine({{ med.id }})">💊 Mark Taken</button>
+              {% endif %}
+              <div style="margin-top:8px;font-size:0.8rem;color:var(--text-muted)">
+                <span class="tablets-remaining">{{ med.tablets_remaining }}</span> tablets left
+              </div>
+              {% if med.tablets_remaining <= 5 %}
+              <div style="color:var(--red);font-size:0.75rem;font-weight:700">⚠️ Low stock!</div>
+              {% endif %}
+            </div>
+          </div>
+          <div style="margin-top:12px">
+            <a href="{{ url_for('tablet_grid', medicine_id=med.id) }}" style="font-size:0.8rem;color:var(--primary);font-weight:700;text-decoration:none">
+              View 30-day tracking grid →
+            </a>
+          </div>
+        </div>
+        {% endfor %}
+      {% else %}
+        <div class="card text-center" style="padding:40px">
+          <div style="font-size:3rem;margin-bottom:12px">💊</div>
+          <div style="font-weight:800;margin-bottom:8px">No medicines added yet</div>
+          <a href="{{ url_for('prescription_upload') }}" class="btn btn-primary mt-16">Add Medicines</a>
+        </div>
+      {% endif %}
+    </div>
+
+    <!-- FOOD REMINDERS -->
+    <div id="food" class="mb-24">
+      <h3 style="font-family:'Playfair Display',serif;font-size:1.4rem;font-weight:700;margin-bottom:16px">🍽️ Food Reminders</h3>
+      {% set before_meds = medicines|selectattr('food_condition','equalto','before')|list %}
+      {% set after_meds  = medicines|selectattr('food_condition','equalto','after')|list %}
+      {% if before_meds %}
+      <div class="food-card mb-16">
+        <div style="font-weight:800;color:var(--green);margin-bottom:10px">🍽️ Take BEFORE Food:</div>
+        {% for m in before_meds %}
+        <div style="padding:8px 0;border-bottom:1px solid #c6f6d5;font-size:0.9rem"><strong>{{ m.name }}</strong>{% if m.dosage %} — {{ m.dosage }}{% endif %}</div>
+        {% endfor %}
+      </div>
+      {% endif %}
+      {% if after_meds %}
+      <div class="food-card" style="background:linear-gradient(135deg,#fffbeb,#fefcbf);border-color:#fbd38d">
+        <div style="font-weight:800;color:var(--yellow);margin-bottom:10px">🍽️ Take AFTER Food:</div>
+        {% for m in after_meds %}
+        <div style="padding:8px 0;border-bottom:1px solid #fbd38d;font-size:0.9rem"><strong>{{ m.name }}</strong>{% if m.dosage %} — {{ m.dosage }}{% endif %}</div>
+        {% endfor %}
+      </div>
+      {% endif %}
+      {% if not before_meds and not after_meds %}
+      <div class="card text-center" style="padding:24px;color:var(--text-muted)">No specific food instructions for your medicines</div>
+      {% endif %}
+    </div>
+
+    <!-- EXERCISE -->
+    <div id="exercise" class="mb-24">
+      <h3 style="font-family:'Playfair Display',serif;font-size:1.4rem;font-weight:700;margin-bottom:16px">🏃 Exercise Plan</h3>
+      <div id="exerciseList"></div>
+    </div>
+
+    <!-- ALERTS -->
+    <div id="alerts" class="mb-24">
+      <h3 style="font-family:'Playfair Display',serif;font-size:1.4rem;font-weight:700;margin-bottom:16px">🔔 Recent Alerts</h3>
+      {% if alerts %}
+        {% for alert in alerts %}
+        <div class="alert-box {{ 'error' if alert.alert_type=='emergency' else 'warning' if alert.alert_type=='missed' else 'info' }} mb-8">
+          <div class="alert-icon">{{ '🚨' if alert.alert_type=='emergency' else '⚠️' if alert.alert_type=='missed' else '💊' }}</div>
+          <div style="flex:1">
+            <div class="alert-msg">{{ alert.message }}</div>
+            <div class="alert-time">{{ alert.created_at.strftime('%d %b %Y, %I:%M %p') }}</div>
+          </div>
+          {% if alert.caretaker_notified %}<span class="badge badge-orange">Caretaker Notified</span>{% endif %}
+        </div>
+        {% endfor %}
+      {% else %}
+        <div class="card text-center" style="padding:24px;color:var(--text-muted)">No alerts yet!</div>
+      {% endif %}
+    </div>
+
+    <!-- DOCTOR SECTION -->
+    <div id="my-doctor" class="mb-24">
+      <h3 style="font-family:'Playfair Display',serif;font-size:1.4rem;font-weight:700;margin-bottom:16px">🩺 My Doctor</h3>
+      <div id="doctorCard">
+        <div class="card text-center" style="padding:32px;color:var(--text-muted)">
+          <div style="font-size:2.5rem;margin-bottom:8px">⏳</div>
+          <div>Loading doctor info…</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- REVIEW SECTION -->
+    <div id="review-section" class="mb-24" style="display:none">
+      <h3 style="font-family:'Playfair Display',serif;font-size:1.4rem;font-weight:700;margin-bottom:16px">⭐ Rate Your Doctor</h3>
+      <div class="card" style="padding:28px">
+        <div style="margin-bottom:18px">
+          <div style="font-weight:800;margin-bottom:10px">Your Rating</div>
+          <div id="starRating" style="display:flex;gap:8px;font-size:2rem;cursor:pointer">
+            <span class="star" data-val="1" style="transition:transform 0.15s">☆</span>
+            <span class="star" data-val="2" style="transition:transform 0.15s">☆</span>
+            <span class="star" data-val="3" style="transition:transform 0.15s">☆</span>
+            <span class="star" data-val="4" style="transition:transform 0.15s">☆</span>
+            <span class="star" data-val="5" style="transition:transform 0.15s">☆</span>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Your Comment (optional)</label>
+          <textarea id="reviewComment" class="form-control" rows="3" placeholder="Share your experience with your doctor…" style="resize:vertical"></textarea>
+        </div>
+        <button onclick="submitReview()" class="btn btn-primary" style="min-width:150px">⭐ Submit Review</button>
+        <div id="reviewMsg" style="margin-top:12px;font-weight:700;display:none"></div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<!-- VIDEO CALL FULLSCREEN -->
+<div id="videoCallScreen" style="display:none;position:fixed;inset:0;background:#0f172a;z-index:9999;flex-direction:column">
+  <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 20px;background:#1e293b;border-bottom:1px solid #334155;flex-shrink:0">
+    <div style="display:flex;align-items:center;gap:12px">
+      <div id="patCallDot" style="width:12px;height:12px;border-radius:50%;background:#f59e0b"></div>
+      <div>
+        <div style="color:white;font-weight:900;font-size:1rem" id="patCallTitle">📹 Connecting to Doctor…</div>
+        <div style="color:#94a3b8;font-size:0.78rem" id="patCallStatus">Please wait…</div>
+      </div>
+    </div>
+    <div style="display:flex;align-items:center;gap:12px">
+      <div id="patCallTimer" style="color:#10b981;font-weight:900;font-size:1.1rem;display:none">00:00</div>
+      <button onclick="endPatCall()" class="btn btn-danger" style="padding:8px 20px;font-weight:800">📵 End Call</button>
+    </div>
+  </div>
+  <div id="patJitsiContainer" style="flex:1;width:100%;background:#000"></div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script src="https://meet.jit.si/external_api.js"></script>
+<script>
+const VOICE_ENABLED = {{ 'true' if user.voice_enabled else 'false' }};
+const USER_LANG = '{{ user.language }}';
+const USER_DISEASES = {{ (user.diseases or '')|tojson }};
+
+VoiceEngine.init(VOICE_ENABLED, USER_LANG);
+
+{% if user.voice_enabled %}
+window.addEventListener('load', () => {
+  setTimeout(() => {
+    VoiceEngine.speak('Welcome {{ user.name }}. Here is your medicine dashboard.');
+  }, 1500);
+});
+{% endif %}
+
+// Pass medicine schedule from server to JS
+const MED_SCHEDULE = {{ med_schedule | tojson }};
+
+// Global today string for localStorage keys
+const todayStr = new Date().toISOString().slice(0,10);
+
+// ── Build today's timeline sorted by time ─────────────────────────────────────
+function buildTimeline() {
+  const container = document.getElementById('scheduleTimeline');
+  if (!container) return;
+
+  // Collect all time slots across all medicines
+  const slots = [];
+  MED_SCHEDULE.forEach(med => {
+    (med.times || []).forEach(t => {
+      slots.push({ time: t, med });
+    });
+  });
+
+  if (slots.length === 0) {
+    container.innerHTML = '<div class="card text-center" style="padding:24px;color:var(--text-muted)">No reminders scheduled yet. <a href="/medicine-form" style="color:var(--primary);font-weight:700">Set times →</a></div>';
+    return;
+  }
+
+  // Sort by time
+  slots.sort((a, b) => a.time.localeCompare(b.time));
+
+  const now = new Date();
+  const nowMins = now.getHours() * 60 + now.getMinutes();
+
+  let html = '';
+  slots.forEach(slot => {
+    const [h, m] = slot.time.split(':').map(Number);
+    const slotMins = h * 60 + m;
+    const ampm = h < 12 ? 'AM' : 'PM';
+    const hr = h % 12 === 0 ? 12 : h % 12;
+    const timeStr = `${hr}:${m.toString().padStart(2,'0')} ${ampm}`;
+    const isPast = slotMins < nowMins;
+    const isCurrent = Math.abs(slotMins - nowMins) <= 5;
+    // Check if taken TODAY - from server (date-checked) OR localStorage
+    const takenKey = 'taken_' + slot.med.id + '_' + todayStr;
+    const takenFromStorage = localStorage.getItem(takenKey) === 'true';
+    const taken = slot.med.today_taken || takenFromStorage;
+
+    const dotColor = taken ? 'var(--green)' : isCurrent ? 'var(--orange)' : isPast ? 'var(--red)' : 'var(--border)';
+    const cardBg = isCurrent ? 'linear-gradient(135deg,#fffbeb,#fff)' : 'white';
+    const border = isCurrent ? '2px solid var(--orange)' : '2px solid var(--border)';
+    const status = taken ? '✅ Taken' : isCurrent ? '🔔 Now!' : isPast ? '⚠️ Missed?' : '⏳ Upcoming';
+    const statusColor = taken ? 'var(--green)' : isCurrent ? 'var(--orange)' : isPast ? 'var(--red)' : 'var(--text-muted)';
+
+    html += `
+      <div style="display:flex;gap:16px;align-items:center;margin-bottom:12px">
+        <div style="text-align:center;min-width:70px">
+          <div style="font-size:1rem;font-weight:900;color:var(--primary)">${timeStr}</div>
+        </div>
+        <div style="width:14px;height:14px;border-radius:50%;background:${dotColor};flex-shrink:0;box-shadow:0 0 0 3px ${dotColor}22"></div>
+        <div style="flex:1;background:${cardBg};border:${border};border-radius:12px;padding:12px 16px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+          <div>
+            <div style="font-weight:800;font-size:0.95rem">${slot.med.name}</div>
+            ${slot.med.dosage ? `<div style="font-size:0.8rem;color:var(--text-muted)">${slot.med.dosage}</div>` : ''}
+            ${slot.med.food_condition !== 'anytime' ? `<div style="font-size:0.78rem;color:var(--accent);font-weight:700">🍽️ ${slot.med.food_condition} food</div>` : ''}
+          </div>
+          <div style="display:flex;align-items:center;gap:10px">
+            <span style="font-size:0.82rem;font-weight:800;color:${statusColor}">${status}</span>
+            ${!taken ? `<button onclick="takeMedicine(${slot.med.id})" class="btn btn-primary btn-sm">💊 Take Now</button>` : ''}
+          </div>
+        </div>
+      </div>
+    `;
+  });
+  container.innerHTML = html;
+}
+
+buildTimeline();
+setInterval(buildTimeline, 60000); // refresh timeline every minute
+
+// Start reminder engine
+ReminderEngine.init(MED_SCHEDULE, VOICE_ENABLED);
+showExercises(USER_DISEASES);
+
+let currentReminderMed = null;
+
+function markTakenLocally(medId) {
+  localStorage.setItem('taken_' + medId + '_' + todayStr, 'true');
+}
+
+function onReminderNo() {
+  ReminderPopup.hide();
+  showNotification('⏰ Snoozed. We will remind you again in 2 minutes.', 'warning');
+  if (VOICE_ENABLED) VoiceEngine.speak('Okay. We will remind you again in 2 minutes.', true);
+}
+
+// Patch ReminderEngine to capture currentReminderMed reliably
+const _origCheckNow = ReminderEngine.checkNow.bind(ReminderEngine);
+ReminderEngine.checkNow = function() {
+  // Wrap ReminderPopup.show to always capture the current med
+  const _origPopupShow = ReminderPopup.show.bind(ReminderPopup);
+  ReminderPopup.show = function(med, time) {
+    currentReminderMed = med;
+    const yesBtn = document.getElementById('yesTakenBtn');
+    if (yesBtn) yesBtn.setAttribute('data-med-id', String(med.id));
+    _origPopupShow(med, time);
+  };
+  _origCheckNow();
+};
+
+function onReminderYes() {
+  const yesBtn = document.getElementById('yesTakenBtn');
+  const medId = (currentReminderMed && currentReminderMed.id)
+             || (yesBtn && parseInt(yesBtn.getAttribute('data-med-id')));
+  if (medId) {
+    takeMedicine(medId);
+    ReminderPopup.hide();
+    currentReminderMed = null;
+  } else {
+    alert('Error: Could not find medicine. Please refresh and try again.');
+  }
+}
+
+// ── DOCTOR SECTION ─────────────────────────────────────────────────────────
+let currentDoctorId = null;
+let selectedRating = 0;
+let callInterval = null;
+let callSeconds = 0;
+
+async function loadDoctorCard() {
+  try {
+    const res = await fetch('/api/get-doctor-for-patient');
+    const data = await res.json();
+    const card = document.getElementById('doctorCard');
+    const reviewSec = document.getElementById('review-section');
+    const reviewLink = document.getElementById('reviewSidebarLink');
+    if (!data.found) {
+      card.innerHTML = `
+        <div class="card text-center" style="padding:32px;color:var(--text-muted)">
+          <div style="font-size:3rem;margin-bottom:12px">🩺</div>
+          <div style="font-weight:700">No doctor assigned yet</div>
+          <div style="font-size:0.85rem;margin-top:8px">Your caretaker or admin will assign a doctor soon</div>
+        </div>`;
+      return;
+    }
+    currentDoctorId = data.id;
+    let starsHtml = '';
+    for(let i=1;i<=5;i++) starsHtml += i<=Math.round(data.avg_rating)?'⭐':'☆';
+    card.innerHTML = `
+      <div class="card" style="border-top:4px solid #10b981;padding:24px">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px;margin-bottom:16px">
+          <div>
+            <div style="font-size:0.75rem;color:var(--text-muted);font-weight:700;margin-bottom:2px">YOUR ASSIGNED DOCTOR</div>
+            <div style="font-size:1.3rem;font-weight:900;color:#0f766e">${data.name}</div>
+            <div style="font-size:0.9rem;color:#10b981;font-weight:700;margin-top:2px">🏥 ${data.specialist}</div>
+            <div style="font-size:0.82rem;color:var(--text-muted);margin-top:2px">${data.qualification}</div>
+          </div>
+          <div style="text-align:right">
+            <div style="font-size:1.1rem;margin-bottom:4px">${starsHtml}</div>
+            <div style="font-size:0.82rem;color:var(--text-muted)">${data.avg_rating > 0 ? data.avg_rating+'/5 · '+data.review_count+' review(s)' : 'No reviews yet'}</div>
+          </div>
+        </div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap">
+          <a href="tel:${data.phone}" class="btn btn-sm btn-primary">📞 Call Dr.</a>
+          <button onclick="openVideoModal('${data.name}', ${data.id}, {{ user.id }})" class="btn btn-sm" style="background:#10b981;color:white;border:none;font-weight:800;padding:8px 18px;border-radius:10px">📹 Video Call</button>
+          <button onclick="scrollToReview()" class="btn btn-sm btn-outline">⭐ Rate Doctor</button>
+        </div>
+      </div>`;
+    reviewSec.style.display = 'block';
+    if(reviewLink) reviewLink.style.display = 'flex';
+    // Pre-fill existing review
+    if(data.my_rating > 0) {
+      selectedRating = data.my_rating;
+      renderStars(selectedRating);
+      document.getElementById('reviewComment').value = data.my_comment || '';
+    }
+  } catch(e) { console.error('Doctor load error:', e); }
+}
+
+function scrollToReview() {
+  document.getElementById('review-section').scrollIntoView({behavior:'smooth'});
+}
+
+function renderStars(val) {
+  document.querySelectorAll('#starRating .star').forEach(s => {
+    const v = parseInt(s.dataset.val);
+    s.textContent = v <= val ? '⭐' : '☆';
+    s.style.transform = v <= val ? 'scale(1.15)' : 'scale(1)';
+  });
+}
+
+document.querySelectorAll('#starRating .star').forEach(s => {
+  s.addEventListener('mouseenter', () => renderStars(parseInt(s.dataset.val)));
+  s.addEventListener('mouseleave', () => renderStars(selectedRating));
+  s.addEventListener('click', () => { selectedRating = parseInt(s.dataset.val); renderStars(selectedRating); });
+});
+
+async function submitReview() {
+  if (!currentDoctorId) return;
+  if (selectedRating === 0) { showNotification('⭐ Please select a star rating first!', 'warning'); return; }
+  const comment = document.getElementById('reviewComment').value.trim();
+  const res = await fetch('/api/doctor/review', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({doctor_id: currentDoctorId, rating: selectedRating, comment})
+  });
+  const data = await res.json();
+  const msg = document.getElementById('reviewMsg');
+  if(data.success) {
+    msg.style.display='block'; msg.style.color='var(--green)';
+    msg.textContent = '✅ Review submitted! Thank you.';
+    showNotification('✅ Review submitted!', 'success');
+    setTimeout(() => loadDoctorCard(), 1200);
+  }
+}
+
+// ── VIDEO CALL — Real Jitsi ─────────────────────────────────────────────────
+let jitsiApi = null;
+let patCallInterval = null;
+let patCallSeconds = 0;
+let currentDoctorRoomId = null;
+let currentDoctorDisplayName = 'Doctor';
+
+function openVideoModal(doctorName, doctorId, patientId) {
+  currentDoctorDisplayName = doctorName || 'Doctor';
+  // Same room formula as doctor side
+  currentDoctorRoomId = 'SmartHealthConsult-' + doctorId + '-' + patientId;
+
+  const screen = document.getElementById('videoCallScreen');
+  screen.style.display = 'flex';
+  screen.style.flexDirection = 'column';
+  document.getElementById('patCallTitle').textContent = '📹 Video Call — Dr. ' + currentDoctorDisplayName;
+  document.getElementById('patCallStatus').textContent = 'Connecting…';
+
+  const container = document.getElementById('patJitsiContainer');
+  container.innerHTML = '';
+
+  jitsiApi = new JitsiMeetExternalAPI('meet.jit.si', {
+    roomName: currentDoctorRoomId,
+    parentNode: container,
+    width: '100%',
+    height: '100%',
+    userInfo: { displayName: '{{ user.name }} (Patient)' },
+    configOverwrite: {
+      startWithAudioMuted: false,
+      startWithVideoMuted: false,
+      disableDeepLinking: true,
+      enableWelcomePage: false,
+      prejoinPageEnabled: false,
+    },
+    interfaceConfigOverwrite: {
+      SHOW_JITSI_WATERMARK: false,
+      SHOW_BRAND_WATERMARK: false,
+      TOOLBAR_BUTTONS: ['microphone','camera','hangup','chat','fullscreen','tileview','videoquality'],
+    }
+  });
+
+  jitsiApi.addEventListener('videoConferenceJoined', () => {
+    document.getElementById('patCallStatus').textContent = '● Live — Dr. ' + currentDoctorDisplayName;
+    document.getElementById('patCallDot').style.background = '#10b981';
+    document.getElementById('patCallTimer').style.display = 'block';
+    patCallSeconds = 0;
+    patCallInterval = setInterval(() => {
+      patCallSeconds++;
+      const m = String(Math.floor(patCallSeconds/60)).padStart(2,'0');
+      const s = String(patCallSeconds%60).padStart(2,'0');
+      document.getElementById('patCallTimer').textContent = m+':'+s;
+    }, 1000);
+  });
+
+  jitsiApi.addEventListener('readyToClose', endPatCall);
+}
+
+function endPatCall() {
+  if (jitsiApi) { try { jitsiApi.dispose(); } catch(e){} jitsiApi = null; }
+  if (patCallInterval) { clearInterval(patCallInterval); patCallInterval = null; }
+  document.getElementById('videoCallScreen').style.display = 'none';
+  document.getElementById('patCallTimer').style.display = 'none';
+  document.getElementById('patCallTimer').textContent = '00:00';
+}
+
+// Alias for backward compat
+function closeVideoModal() { endPatCall(); }
+function endVideoCall() { endPatCall(); }
+
+// Load doctor on page ready
+loadDoctorCard();
+</script>
+{% endblock %}

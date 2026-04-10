@@ -1,0 +1,155 @@
+{% extends 'base.html' %}
+{% block title %}Medical Details — SmartHealth{% endblock %}
+{% block content %}
+<div class="container-sm page-section">
+  <div class="step-bar">
+    <div class="step-item"><div class="step-dot done">✓</div><div class="step-label">Register</div></div>
+    <div class="step-line done"></div>
+    <div class="step-item"><div class="step-dot active">2</div><div class="step-label active">Medical</div></div>
+    <div class="step-line"></div>
+    <div class="step-item"><div class="step-dot">3</div><div class="step-label">Caretaker</div></div>
+    <div class="step-line"></div>
+    <div class="step-item"><div class="step-dot">4</div><div class="step-label">Prescription</div></div>
+    <div class="step-line"></div>
+    <div class="step-item"><div class="step-dot">5</div><div class="step-label">Schedule</div></div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <div class="card-icon">🩺</div>
+      <div>
+        <div class="card-title">Medical Information</div>
+        <div class="card-subtitle">Select your conditions so we can suggest the right exercises and reminders</div>
+      </div>
+    </div>
+
+    <form method="POST" id="medical-form">
+      <div class="form-group">
+        <label class="form-label">Select Your Diseases / Conditions</label>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+
+          <label class="form-check" for="disease-diabetes">
+            <input type="checkbox" id="disease-diabetes" name="diseases" value="Diabetes">
+            <span>🍬 Diabetes</span>
+          </label>
+
+          <label class="form-check" for="disease-bp">
+            <input type="checkbox" id="disease-bp" name="diseases" value="Hypertension (BP)">
+            <span>❤️ Hypertension (BP)</span>
+          </label>
+
+          <label class="form-check" for="disease-heart">
+            <input type="checkbox" id="disease-heart" name="diseases" value="Heart Disease">
+            <span>💓 Heart Disease</span>
+          </label>
+
+          <label class="form-check" for="disease-thyroid">
+            <input type="checkbox" id="disease-thyroid" name="diseases" value="Thyroid">
+            <span>🦋 Thyroid</span>
+          </label>
+
+          <label class="form-check" for="disease-arthritis">
+            <input type="checkbox" id="disease-arthritis" name="diseases" value="Arthritis">
+            <span>🦴 Arthritis</span>
+          </label>
+
+          <label class="form-check" for="disease-asthma">
+            <input type="checkbox" id="disease-asthma" name="diseases" value="Asthma">
+            <span>🫁 Asthma</span>
+          </label>
+
+          <label class="form-check" for="disease-kidney">
+            <input type="checkbox" id="disease-kidney" name="diseases" value="Kidney Disease">
+            <span>🫘 Kidney Disease</span>
+          </label>
+
+          <label class="form-check" for="disease-eye">
+            <input type="checkbox" id="disease-eye" name="diseases" value="Eye Problems">
+            <span>👁️ Eye Problems</span>
+          </label>
+
+          <label class="form-check" for="disease-neuro">
+            <input type="checkbox" id="disease-neuro" name="diseases" value="Neurological">
+            <span>🧠 Neurological</span>
+          </label>
+
+          <label class="form-check" for="other-checkbox">
+            <input type="checkbox" id="other-checkbox" name="diseases" value="Other" onchange="toggleOtherBox(this)">
+            <span>🏥 Other</span>
+          </label>
+
+        </div>
+
+        <!-- Other disease text box — shows only when Other is checked -->
+        <div id="other-box" style="display:none;margin-top:12px">
+          <input type="text" name="other_disease" id="other-disease-input"
+                 class="form-control"
+                 placeholder="Please specify your condition..."
+                 style="border:2px solid #3182ce;border-radius:10px;padding:10px 14px;font-size:0.95rem;width:100%;box-sizing:border-box">
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Physical Conditions / Mobility</label>
+        <select name="physical_conditions" class="form-control form-select">
+          <option value="normal">Normal mobility</option>
+          <option value="limited">Limited mobility (can walk with support)</option>
+          <option value="wheelchair">Uses wheelchair</option>
+          <option value="bedridden">Mostly bedridden</option>
+        </select>
+      </div>
+
+      <div class="form-group" style="background:var(--accent-light);border:1px solid #b2f5ea;border-radius:12px;padding:16px;">
+        <div style="font-weight:800;color:var(--accent);margin-bottom:8px">🏃 Personalized Exercise Plan</div>
+        <div style="font-size:0.875rem;color:var(--text-muted)">Based on your selected diseases, we'll suggest appropriate daily exercises on your dashboard.</div>
+      </div>
+
+      <button type="submit" class="btn btn-primary btn-block btn-lg">Next: Caretaker Mapping →</button>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function toggleOtherBox(checkbox) {
+  const box = document.getElementById('other-box');
+  const input = document.getElementById('other-disease-input');
+  if (checkbox.checked) {
+    box.style.setProperty('display', 'block', 'important');
+    input.focus();
+  } else {
+    box.style.setProperty('display', 'none', 'important');
+    input.value = '';
+  }
+}
+
+// Validate on submit
+document.getElementById('medical-form').addEventListener('submit', function(e) {
+  const otherCheckbox = document.getElementById('other-checkbox');
+  const otherInput = document.getElementById('other-disease-input');
+  if (otherCheckbox.checked && otherInput.value.trim() === '') {
+    e.preventDefault();
+    otherInput.style.borderColor = '#e53e3e';
+    otherInput.placeholder = 'Please specify your condition!';
+    otherInput.focus();
+  }
+});
+
+document.getElementById('other-disease-input').addEventListener('input', function() {
+  this.style.borderColor = '#3182ce';
+});
+</script>
+
+<script>
+(function(){
+  const VOICE_ENABLED = {{ 'true' if session.get('voice_enabled') else 'false' }};
+  if (!VOICE_ENABLED) return;
+  const synth = window.speechSynthesis;
+  function speak(t){ synth.cancel(); const u=new SpeechSynthesisUtterance(t); u.lang='en-IN'; u.rate=0.88; synth.speak(u); }
+  window.addEventListener('load', () => setTimeout(() =>
+    speak('Step 2. Medical Details. Please select any diseases you have, and describe any physical conditions. Then press Next.'), 800));
+  document.getElementById('medical-form').addEventListener('submit', () => speak('Medical details saved. Moving to caretaker setup.'));
+})();
+</script>
+{% endblock %}

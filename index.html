@@ -1,0 +1,140 @@
+{% extends 'base.html' %}
+{% block title %}SmartHealth — AI-Powered Medicine Reminder Platform{% endblock %}
+
+{% block content %}
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-badge">🏥 AI-Powered Healthcare</div>
+  <h1>Smart Voice-Assisted<br>Healthcare Platform</h1>
+  <p>Helping elderly patients remember medicines on time — with voice guidance, caretaker alerts, and smart prescription scanning.</p>
+  <div class="hero-buttons">
+    <a href="{{ url_for('register') }}" class="btn btn-white btn-lg">👤 I'm a Patient</a>
+    <a href="{{ url_for('user_login') }}" class="btn btn-accent btn-lg">🔐 Patient Login</a>
+    <a href="{{ url_for('caretaker_login') }}" class="btn btn-lg" style="background:rgba(255,255,255,0.15);color:white;border:2px solid rgba(255,255,255,0.4);">👨‍⚕️ Caretaker Login</a>
+    <a href="{{ url_for('doctor_login') }}" class="btn btn-lg" style="background:rgba(56,178,172,0.3);color:white;border:2px solid rgba(56,178,172,0.6);">🩺 Doctor Login</a>
+    <a href="{{ url_for('admin_login') }}" class="btn btn-lg" style="background:rgba(255,255,255,0.1);color:white;border:2px solid rgba(255,255,255,0.3);">🔑 Admin</a>
+  </div>
+</section>
+
+<!-- FEATURES -->
+<section class="features container">
+  <div style="text-align:center;margin-bottom:40px">
+    <h2 style="font-family:'Playfair Display',serif;font-size:2rem;font-weight:700;margin-bottom:12px">Why SmartHealth?</h2>
+    <p style="color:var(--text-muted);font-size:1.05rem;max-width:540px;margin:0 auto">Designed specifically for elderly patients who need gentle reminders, and caretakers who need real-time monitoring.</p>
+  </div>
+  <div class="grid-3">
+    <div class="feature-card">
+      <div class="feature-icon">🔊</div>
+      <div class="feature-title">Voice Guidance</div>
+      <div class="feature-desc">Auto-enabled for users above 45. Speaks medicine names, timing, and health tips clearly in English or Tamil.</div>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">📷</div>
+      <div class="feature-title">Prescription OCR</div>
+      <div class="feature-desc">Upload your prescription image or PDF. Our AI reads and extracts medicine names automatically.</div>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">⏰</div>
+      <div class="feature-title">Smart Reminders</div>
+      <div class="feature-desc">Get reminded at the right time. Miss a dose? We alert your caretaker automatically after 2 reminders.</div>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">💊</div>
+      <div class="feature-title">Tablet Grid Tracking</div>
+      <div class="feature-desc">30-day visual grid shows exactly which medicines you've taken. Low stock alerts before you run out.</div>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">👨‍👧</div>
+      <div class="feature-title">Caretaker Dashboard</div>
+      <div class="feature-desc">Family or nurse can monitor all activity, view missed doses, and receive instant emergency alerts.</div>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">🚨</div>
+      <div class="feature-title">Emergency Button</div>
+      <div class="feature-desc">One tap sends an instant emergency alert to your caretaker with your details. Available 24/7.</div>
+    </div>
+  </div>
+</section>
+
+<!-- HOW IT WORKS -->
+<section style="background:white;padding:60px 0;margin:40px 0">
+  <div class="container">
+    <div style="text-align:center;margin-bottom:40px">
+      <h2 style="font-family:'Playfair Display',serif;font-size:2rem;font-weight:700;margin-bottom:12px">How It Works</h2>
+    </div>
+    <div style="display:flex;gap:0;overflow-x:auto;padding-bottom:10px">
+      {% for step in [
+        ('1','Register','Enter your details, age & language'),
+        ('2','Medical Info','Select your diseases & conditions'),
+        ('3','Add Caretaker','Map your caretaker for alerts'),
+        ('4','Upload Rx','Scan your prescription automatically'),
+        ('5','Set Schedule','Edit & confirm medicine timings'),
+        ('6','Stay Healthy','Receive reminders & track intake')
+      ] %}
+      <div style="flex:1;min-width:140px;text-align:center;padding:0 16px;position:relative">
+        <div style="width:56px;height:56px;background:var(--primary);color:white;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.4rem;font-weight:900;margin:0 auto 12px;">{{ step[0] }}</div>
+        <div style="font-weight:800;font-size:0.95rem;margin-bottom:6px">{{ step[1] }}</div>
+        <div style="font-size:0.8rem;color:var(--text-muted)">{{ step[2] }}</div>
+        {% if not loop.last %}
+        <div style="position:absolute;top:28px;right:-12px;font-size:1.5rem;color:var(--border)">→</div>
+        {% endif %}
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+
+<!-- STATS -->
+<section class="container page-section">
+  <div class="grid-4">
+    <div class="stat-card" style="border-color:var(--primary)">
+      <div class="stat-number">45+</div>
+      <div class="stat-label">Voice Auto-Enabled Age</div>
+    </div>
+    <div class="stat-card" style="border-color:var(--accent)">
+      <div class="stat-number">30</div>
+      <div class="stat-label">Day Tablet Tracking</div>
+    </div>
+    <div class="stat-card" style="border-color:var(--orange)">
+      <div class="stat-number">2min</div>
+      <div class="stat-label">Missed Dose Re-Alert</div>
+    </div>
+    <div class="stat-card" style="border-color:var(--red)">
+      <div class="stat-number">24/7</div>
+      <div class="stat-label">Emergency Alert System</div>
+    </div>
+  </div>
+</section>
+
+<!-- QUICK LOGIN CARDS -->
+<section class="container" style="padding-bottom:60px">
+  <h2 style="text-align:center;font-family:'Playfair Display',serif;font-size:1.8rem;margin-bottom:30px">Choose Your Role</h2>
+  <div class="grid-3">
+    <div class="card text-center" style="border-top:4px solid var(--primary)">
+      <div style="font-size:3rem;margin-bottom:16px">👤</div>
+      <h3 style="font-size:1.2rem;font-weight:900;margin-bottom:10px">Patient / User</h3>
+      <p style="color:var(--text-muted);font-size:0.875rem;margin-bottom:20px">Register to set up medicine reminders, upload prescriptions, and track your health.</p>
+      <a href="{{ url_for('register') }}" class="btn btn-primary btn-block">Register Now</a>
+      <a href="{{ url_for('user_login') }}" class="btn btn-outline btn-block mt-8">Already Registered? Login</a>
+    </div>
+    <div class="card text-center" style="border-top:4px solid var(--accent)">
+      <div style="font-size:3rem;margin-bottom:16px">👨‍⚕️</div>
+      <h3 style="font-size:1.2rem;font-weight:900;margin-bottom:10px">Caretaker</h3>
+      <p style="color:var(--text-muted);font-size:0.875rem;margin-bottom:20px">Monitor your assigned patient's medicine schedule, alerts, and health activity.</p>
+      <a href="{{ url_for('caretaker_login') }}" class="btn btn-accent btn-block">Caretaker Login</a>
+    </div>
+    <div class="card text-center" style="border-top:4px solid #38b2ac">
+      <div style="font-size:3rem;margin-bottom:16px">🩺</div>
+      <h3 style="font-size:1.2rem;font-weight:900;margin-bottom:10px">Doctor</h3>
+      <p style="color:var(--text-muted);font-size:0.875rem;margin-bottom:20px">View your assigned patient's medicines, alerts, and health progress. Accept reviews from patients.</p>
+      <a href="{{ url_for('doctor_login') }}" class="btn btn-block" style="background:#38b2ac;color:white;">Doctor Login</a>
+    </div>
+    <div class="card text-center" style="border-top:4px solid var(--orange)">
+      <div style="font-size:3rem;margin-bottom:16px">🔑</div>
+      <h3 style="font-size:1.2rem;font-weight:900;margin-bottom:10px">Administrator</h3>
+      <p style="color:var(--text-muted);font-size:0.875rem;margin-bottom:20px">Manage all users, view activity reports, and configure the system.</p>
+      <a href="{{ url_for('admin_login') }}" class="btn btn-block" style="background:var(--orange);color:white;">Admin Panel</a>
+    </div>
+  </div>
+</section>
+{% endblock %}
