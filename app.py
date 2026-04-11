@@ -14,7 +14,7 @@ try:
 except ImportError:
     OCR_AVAILABLE = False
 
-app = Flask(__name__)
+app = Flask(__name__, template_folder='templates')
 app.secret_key = 'smart_health_secret_key_2024'
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///smart_health.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
