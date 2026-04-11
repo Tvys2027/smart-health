@@ -1169,6 +1169,16 @@ def init_db():
             db.session.commit()
         print("Database ready! All tables created (Doctor + DoctorReview included).")
 
+# Auto-init DB on startup
+with app.app_context():
+    migrate_db()
+    db.create_all()
+    from werkzeug.security import generate_password_hash
+    if not Admin.query.filter_by(username='admin').first():
+        admin = Admin(username='admin', password_hash=generate_password_hash('admin123'))
+        db.session.add(admin)
+        db.session.commit()
+
 if __name__ == '__main__':
     init_db()
     scheduler_thread = threading.Thread(target=check_medicine_reminders, daemon=True)
@@ -1177,4 +1187,5 @@ if __name__ == '__main__':
     # use_reloader=False prevents Flask from spawning a second process
     # which was causing the scheduler (and SMS) to run twice
     app.run(debug=False, use_reloader=False, host='0.0.0.0', port=5000)
+
 
