@@ -14,7 +14,9 @@ try:
 except ImportError:
     OCR_AVAILABLE = False
 
-app = Flask(__name__, template_folder='templates')
+import os
+base_dir = os.path.abspath(os.path.dirname(__file__))
+app = Flask(__name__, template_folder=os.path.join(base_dir, 'templates'), static_folder=os.path.join(base_dir, 'static'))
 app.secret_key = 'smart_health_secret_key_2024'
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///smart_health.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
@@ -1175,3 +1177,4 @@ if __name__ == '__main__':
     # use_reloader=False prevents Flask from spawning a second process
     # which was causing the scheduler (and SMS) to run twice
     app.run(debug=False, use_reloader=False, host='0.0.0.0', port=5000)
+
